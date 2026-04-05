@@ -27,9 +27,14 @@ export default function DocumentExplainerPage() {
     setLoading(true);
     setError('');
     setResult(null);
+    setTranslatedExplanation(null);
     try {
       const res = await axios.post('/api/tools/explain-document', { text });
-      setResult(res.data);
+      if (res.data.error) {
+        setError(String(res.data.error));
+      } else {
+        setResult(res.data);
+      }
     } catch (err) {
       setError('Failed to analyze document. Please try again.');
     } finally {
@@ -105,7 +110,7 @@ export default function DocumentExplainerPage() {
               <h2 className="text-sm font-semibold text-rose-600 uppercase tracking-wide mb-1">
                 Document Type Detected
               </h2>
-              <p className="text-xl font-bold text-gray-900">{result.document_type || result.document_type_detected}</p>
+              <p className="text-xl font-bold text-gray-900">{String(result.document_type || result.document_type_detected || '')}</p>
             </div>
           )}
 
@@ -120,7 +125,7 @@ export default function DocumentExplainerPage() {
                 />
               </div>
               <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                {translatedExplanation || result.plain_language || result.plain_language_explanation}
+                {String(translatedExplanation || result.plain_language || result.plain_language_explanation || '')}
               </p>
             </div>
           )}
@@ -133,7 +138,7 @@ export default function DocumentExplainerPage() {
                 {result.key_takeaways.map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="text-rose-500 mt-1 flex-shrink-0">&#9679;</span>
-                    <span className="text-gray-700">{item}</span>
+                    <span className="text-gray-700">{typeof item === 'string' ? item : JSON.stringify(item)}</span>
                   </li>
                 ))}
               </ul>
@@ -145,7 +150,7 @@ export default function DocumentExplainerPage() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-3">What This Means For You</h2>
               <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                {result.what_it_means}
+                {typeof result.what_it_means === 'string' ? result.what_it_means : JSON.stringify(result.what_it_means)}
               </p>
             </div>
           )}
@@ -158,7 +163,7 @@ export default function DocumentExplainerPage() {
                 {(result.conditions || result.conditions_to_follow).map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="text-amber-500 mt-1 flex-shrink-0">&#9888;</span>
-                    <span className="text-gray-700">{item}</span>
+                    <span className="text-gray-700">{typeof item === 'string' ? item : JSON.stringify(item)}</span>
                   </li>
                 ))}
               </ul>
@@ -173,7 +178,7 @@ export default function DocumentExplainerPage() {
                 {result.deadlines.map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="text-red-500 mt-1 flex-shrink-0">&#128197;</span>
-                    <span className="text-gray-700">{item}</span>
+                    <span className="text-gray-700">{typeof item === 'string' ? item : JSON.stringify(item)}</span>
                   </li>
                 ))}
               </ul>
@@ -190,7 +195,7 @@ export default function DocumentExplainerPage() {
                     <span className="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">
                       {i + 1}
                     </span>
-                    <span className="text-gray-700">{item}</span>
+                    <span className="text-gray-700">{typeof item === 'string' ? item : JSON.stringify(item)}</span>
                   </li>
                 ))}
               </ol>

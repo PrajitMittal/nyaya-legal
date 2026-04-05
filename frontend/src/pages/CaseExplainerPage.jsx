@@ -30,7 +30,11 @@ export default function CaseExplainerPage() {
         ? { cnr_number: caseInput.trim(), party_role: partyRole }
         : { case_number: caseInput.trim(), party_role: partyRole };
       const res = await axios.post('/api/tools/case-explainer', body);
-      setResult(res.data);
+      if (res.data.error) {
+        setError(String(res.data.error));
+      } else {
+        setResult(res.data);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch case details. Please check the case number and try again.');
     } finally {

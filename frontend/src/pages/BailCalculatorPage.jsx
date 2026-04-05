@@ -25,7 +25,11 @@ export default function BailCalculatorPage() {
         chargesheet_date: form.chargesheet_filed ? form.chargesheet_date : null,
       };
       const res = await axios.post('/api/tools/bail-calculator', data);
-      setResult(res.data);
+      if (res.data.error) {
+        setError(String(res.data.error));
+      } else {
+        setResult(res.data);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Calculation failed');
     } finally {

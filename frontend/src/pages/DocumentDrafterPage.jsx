@@ -37,7 +37,7 @@ const DOCUMENT_TYPES = [
     category: 'bail',
   },
   {
-    id: 'complaint_magistrate',
+    id: 'complaint_156_3',
     label: 'Complaint to Magistrate',
     subtitle: 'Section 156(3)',
     icon: '🏛️',
@@ -45,7 +45,7 @@ const DOCUMENT_TYPES = [
     category: 'complaint',
   },
   {
-    id: 'complaint_sp',
+    id: 'sp_complaint',
     label: 'Complaint to SP',
     subtitle: 'Superintendent of Police',
     icon: '📨',
@@ -61,7 +61,7 @@ const DOCUMENT_TYPES = [
     category: 'complaint',
   },
   {
-    id: 'quashing_petition',
+    id: 'quashing_482',
     label: 'Quashing Petition',
     subtitle: 'Section 482',
     icon: '🔨',
@@ -74,7 +74,7 @@ const isBailType = (docType) =>
   ['default_bail', 'anticipatory_bail', 'regular_bail', '436a_release'].includes(docType);
 
 const isComplaintType = (docType) =>
-  ['complaint_magistrate', 'complaint_sp', 'nhrc_complaint'].includes(docType);
+  ['complaint_156_3', 'sp_complaint', 'nhrc_complaint'].includes(docType);
 
 export default function DocumentDrafterPage() {
   const [selectedType, setSelectedType] = useState('');
@@ -107,6 +107,7 @@ export default function DocumentDrafterPage() {
     setLoading(true);
     setError('');
     setResult(null);
+    setTranslatedDoc(null);
     setCopied(false);
     try {
       const payload = {
@@ -125,7 +126,11 @@ export default function DocumentDrafterPage() {
         payload.incident_description = form.incident_description;
       }
       const res = await axios.post('/api/tools/draft-document', payload);
-      setResult(res.data);
+      if (res.data.error) {
+        setError(res.data.error);
+      } else {
+        setResult(res.data);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to generate document. Please try again.');
     } finally {

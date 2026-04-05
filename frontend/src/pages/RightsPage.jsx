@@ -12,15 +12,23 @@ export default function RightsPage() {
   const [selected, setSelected] = useState(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const loadRights = async (situation) => {
     setSelected(situation);
     setLoading(true);
+    setError('');
     try {
       const res = await axios.get(`/api/tools/rights/${situation}`);
-      setData(res.data);
-    } catch {
+      if (res.data.error) {
+        setData(null);
+        setError(String(res.data.error));
+      } else {
+        setData(res.data);
+      }
+    } catch (err) {
       setData(null);
+      setError(err.response?.data?.error || err.message || 'Failed to load rights');
     } finally {
       setLoading(false);
     }
@@ -55,6 +63,8 @@ export default function RightsPage() {
       </div>
 
       {loading && <div className="text-center py-8 text-gray-500">Loading...</div>}
+
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm">{error}</div>}
 
       {data && !loading && (
         <div className="space-y-4">

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from openai import OpenAI
 from typing import Optional
@@ -13,18 +14,25 @@ if OPENROUTER_API_KEY and OPENROUTER_API_KEY != "your_openrouter_key_here":
 MODEL = OPENROUTER_MODEL
 
 
-def _chat(system: str, user: str, max_tokens: int = 4096) -> str:
+async def _chat(system: str, user: str, max_tokens: int = 4096) -> str | None:
     """Send a chat completion request via OpenRouter."""
-    response = client.chat.completions.create(
-        model=MODEL,
-        max_tokens=max_tokens,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=0.3,
-    )
-    return response.choices[0].message.content
+    if not client:
+        return None
+    try:
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
+            model=MODEL,
+            max_tokens=max_tokens,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.3,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"OpenRouter API error: {e}")
+        return None
 
 
 ANALYSIS_PROMPT = """You are an expert Indian legal analyst with deep knowledge of the Indian Penal Code (IPC), Bharatiya Nyaya Sanhita (BNS), Code of Criminal Procedure (CrPC), and Indian court systems.
@@ -157,7 +165,7 @@ async def translate_text(text: str, target_language: str, context: str = None) -
         instruction += f"\nContext: This text relates to {context.replace('_', ' ')}."
 
     try:
-        result = _chat(TRANSLATE_SYSTEM, f"{instruction}\n\nText to translate:\n{text}", max_tokens=2048)
+        result = await _chat(TRANSLATE_SYSTEM, f"{instruction}\n\nText to translate:\n{text}", max_tokens=2048)
         return {
             "original": text,
             "translated": result.strip(),
@@ -195,7 +203,7 @@ async def analyze_fir(fir_data: dict, similar_cases: list) -> dict:
     )
 
     try:
-        response_text = _chat(
+        response_text = await _chat(
             "You are an expert Indian legal analyst. Return ONLY valid JSON.",
             prompt,
         )
@@ -219,7 +227,7 @@ async def extract_fir_from_text(text: str) -> dict:
         return {}
 
     try:
-        response_text = _chat(
+        response_text = await _chat(
             "You are an expert at reading Indian FIR documents. Return ONLY valid JSON.",
             FIR_EXTRACTION_PROMPT.format(text=text[:3000]),
             max_tokens=1024,

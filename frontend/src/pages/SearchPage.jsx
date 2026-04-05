@@ -19,7 +19,11 @@ export default function SearchPage() {
     setError('');
     try {
       const res = await searchKanoon(query || undefined, ipcSections || undefined);
-      setResults(res.data);
+      if (res.data.error) {
+        setError(String(res.data.error));
+      } else {
+        setResults(res.data);
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'Search failed');
     } finally {

@@ -7,6 +7,7 @@ export default function FIRAssistantPage() {
   const [incident, setIncident] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showDraft, setShowDraft] = useState(false);
   const [translatedDraft, setTranslatedDraft] = useState(null);
 
@@ -14,11 +15,16 @@ export default function FIRAssistantPage() {
     e.preventDefault();
     if (!incident.trim()) return;
     setLoading(true);
+    setError('');
     try {
       const res = await axios.post('/api/tools/fir-assistant', { incident });
-      setResult(res.data);
-    } catch {
-      // ignore
+      if (res.data.error) {
+        setError(String(res.data.error));
+      } else {
+        setResult(res.data);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Analysis failed');
     } finally {
       setLoading(false);
     }
@@ -72,6 +78,8 @@ export default function FIRAssistantPage() {
           {loading ? 'Analyzing...' : 'Analyze Incident'}
         </button>
       </form>
+
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm">{error}</div>}
 
       {/* Results */}
       {result && (

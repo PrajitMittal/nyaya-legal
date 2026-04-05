@@ -35,7 +35,7 @@ export default function AnalysisCard({ analysis }) {
       {/* Case Summary */}
       {ai.case_summary && (
         <Section title="Case Summary">
-          <p className="text-gray-700">{ai.case_summary}</p>
+          <p className="text-gray-700">{typeof ai.case_summary === 'string' ? ai.case_summary : JSON.stringify(ai.case_summary)}</p>
         </Section>
       )}
 
@@ -45,9 +45,9 @@ export default function AnalysisCard({ analysis }) {
           <div className="space-y-2">
             {ai.sections_analysis.map((s, i) => (
               <div key={i} className="bg-gray-50 rounded-lg p-3 flex flex-wrap gap-3 items-center">
-                <span className="font-mono font-bold text-primary-700">Sec {s.section}</span>
-                <span className="text-sm text-gray-700">{s.name}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">{s.max_punishment}</span>
+                <span className="font-mono font-bold text-primary-700">Sec {String(s.section || '')}</span>
+                <span className="text-sm text-gray-700">{typeof s.name === 'string' ? s.name : JSON.stringify(s.name)}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">{typeof s.max_punishment === 'string' ? s.max_punishment : JSON.stringify(s.max_punishment)}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${s.bailable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                   {s.bailable ? 'Bailable' : 'Non-Bailable'}
                 </span>
@@ -62,7 +62,7 @@ export default function AnalysisCard({ analysis }) {
         <Section title="Recommended Investigation Steps">
           <ol className="list-decimal list-inside space-y-1.5">
             {ai.investigation_steps.map((step, i) => (
-              <li key={i} className="text-gray-700 text-sm">{step}</li>
+              <li key={i} className="text-gray-700 text-sm">{typeof step === 'string' ? step : JSON.stringify(step)}</li>
             ))}
           </ol>
         </Section>
@@ -81,8 +81,8 @@ export default function AnalysisCard({ analysis }) {
                   )}
                 </div>
                 <div>
-                  <span className="font-medium text-sm">{t.stage}</span>
-                  <span className="text-gray-500 text-xs ml-2">{t.typical_duration}</span>
+                  <span className="font-medium text-sm">{typeof t.stage === 'string' ? t.stage : JSON.stringify(t.stage)}</span>
+                  <span className="text-gray-500 text-xs ml-2">{typeof t.typical_duration === 'string' ? t.typical_duration : JSON.stringify(t.typical_duration)}</span>
                 </div>
               </div>
             ))}
@@ -93,12 +93,12 @@ export default function AnalysisCard({ analysis }) {
       {/* Bail Assessment */}
       {ai.bail_assessment && (
         <Section title="Bail Assessment">
-          <p className="text-gray-700 text-sm mb-2">{ai.bail_assessment.reasoning}</p>
+          <p className="text-gray-700 text-sm mb-2">{typeof ai.bail_assessment.reasoning === 'string' ? ai.bail_assessment.reasoning : JSON.stringify(ai.bail_assessment.reasoning)}</p>
           {ai.bail_assessment.conditions?.length > 0 && (
             <div className="mt-2">
               <p className="text-xs font-medium text-gray-500 mb-1">Likely Conditions:</p>
               <ul className="list-disc list-inside text-sm text-gray-600 space-y-0.5">
-                {ai.bail_assessment.conditions.map((c, i) => <li key={i}>{c}</li>)}
+                {ai.bail_assessment.conditions.map((c, i) => <li key={i}>{typeof c === 'string' ? c : JSON.stringify(c)}</li>)}
               </ul>
             </div>
           )}
@@ -106,7 +106,7 @@ export default function AnalysisCard({ analysis }) {
             <div className="mt-2">
               <p className="text-xs font-medium text-gray-500 mb-1">Relevant Precedents:</p>
               <ul className="list-disc list-inside text-sm text-primary-700 space-y-0.5">
-                {ai.bail_assessment.relevant_precedents.map((p, i) => <li key={i}>{p}</li>)}
+                {ai.bail_assessment.relevant_precedents.map((p, i) => <li key={i}>{typeof p === 'string' ? p : JSON.stringify(p)}</li>)}
               </ul>
             </div>
           )}
@@ -120,7 +120,7 @@ export default function AnalysisCard({ analysis }) {
             <ul className="space-y-1.5">
               {ai.defense_strategies.map((s, i) => (
                 <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">&#9679;</span> {s}
+                  <span className="text-blue-500 mt-0.5">&#9679;</span> {typeof s === 'string' ? s : JSON.stringify(s)}
                 </li>
               ))}
             </ul>
@@ -131,7 +131,7 @@ export default function AnalysisCard({ analysis }) {
             <ul className="space-y-1.5">
               {ai.prosecution_strategies.map((s, i) => (
                 <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                  <span className="text-red-500 mt-0.5">&#9679;</span> {s}
+                  <span className="text-red-500 mt-0.5">&#9679;</span> {typeof s === 'string' ? s : JSON.stringify(s)}
                 </li>
               ))}
             </ul>
@@ -145,7 +145,7 @@ export default function AnalysisCard({ analysis }) {
           <div className="flex flex-wrap gap-2">
             {ai.key_evidence_required.map((e, i) => (
               <span key={i} className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-medium">
-                {e}
+                {typeof e === 'string' ? e : JSON.stringify(e)}
               </span>
             ))}
           </div>
@@ -159,13 +159,13 @@ export default function AnalysisCard({ analysis }) {
             {ai.similar_case_analysis.map((c, i) => (
               <div key={i} className="bg-gray-50 rounded-lg p-3">
                 <div className="flex justify-between items-start">
-                  <span className="font-medium text-sm">{c.case_name}</span>
+                  <span className="font-medium text-sm">{typeof c.case_name === 'string' ? c.case_name : JSON.stringify(c.case_name)}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${c.outcome === 'Convicted' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                    {c.outcome}
+                    {typeof c.outcome === 'string' ? c.outcome : JSON.stringify(c.outcome)}
                   </span>
                 </div>
-                <p className="text-gray-600 text-xs mt-1">{c.key_factor}</p>
-                <p className="text-primary-600 text-xs mt-1">{c.relevance}</p>
+                <p className="text-gray-600 text-xs mt-1">{typeof c.key_factor === 'string' ? c.key_factor : JSON.stringify(c.key_factor)}</p>
+                <p className="text-primary-600 text-xs mt-1">{typeof c.relevance === 'string' ? c.relevance : JSON.stringify(c.relevance)}</p>
               </div>
             ))}
           </div>
@@ -177,7 +177,7 @@ export default function AnalysisCard({ analysis }) {
         <Section title="Recommendations" className="bg-legal-50 border-green-200">
           <ol className="list-decimal list-inside space-y-1.5">
             {ai.recommendations.map((r, i) => (
-              <li key={i} className="text-gray-700 text-sm">{r}</li>
+              <li key={i} className="text-gray-700 text-sm">{typeof r === 'string' ? r : JSON.stringify(r)}</li>
             ))}
           </ol>
         </Section>
@@ -186,7 +186,7 @@ export default function AnalysisCard({ analysis }) {
       {/* Risk Assessment */}
       {ai.risk_assessment && (
         <Section title="Risk Assessment">
-          <p className="text-gray-700 text-sm">{ai.risk_assessment}</p>
+          <p className="text-gray-700 text-sm">{typeof ai.risk_assessment === 'string' ? ai.risk_assessment : JSON.stringify(ai.risk_assessment)}</p>
         </Section>
       )}
     </div>

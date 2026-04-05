@@ -14,8 +14,8 @@ export default function PDFUploadButton({ onTextExtracted, label = 'Upload PDF',
       setError('Only PDF files are accepted');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File too large (max 10MB)');
+    if (file.size > 4 * 1024 * 1024) {
+      setError('File too large (max 4MB). Try a smaller PDF.');
       return;
     }
     setUploading(true);
@@ -35,7 +35,19 @@ export default function PDFUploadButton({ onTextExtracted, label = 'Upload PDF',
         setError('No text could be extracted from this PDF');
       }
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.detail || err.message || 'Failed to extract text from PDF';
+      const status = err.response?.status;
+      let msg = 'Failed to extract text from PDF';
+      if (status === 413) {
+        msg = 'File too large for server. Try a smaller PDF (under 4MB).';
+      } else if (typeof err.response?.data === 'string') {
+        msg = err.response.data.slice(0, 200);
+      } else if (err.response?.data?.error) {
+        msg = String(err.response.data.error);
+      } else if (err.response?.data?.detail) {
+        msg = String(err.response.data.detail);
+      } else if (err.message) {
+        msg = String(err.message);
+      }
       setError(msg);
     } finally {
       setUploading(false);

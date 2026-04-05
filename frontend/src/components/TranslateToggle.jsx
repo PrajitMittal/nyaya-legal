@@ -24,8 +24,8 @@ export default function TranslateToggle({ text, onTranslated }) {
       const res = await axios.post('/api/tools/translate', { text, target_language: mode });
       setActiveMode(mode);
       onTranslated(res.data.translated_text || res.data.translated || text);
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.error('Translation failed:', err.message);
     } finally {
       setLoading(false);
     }
