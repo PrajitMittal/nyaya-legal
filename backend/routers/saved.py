@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, get_optional_user
 from models import User, SavedResult
 from schemas import SavedResultCreate, SavedResultResponse
 
@@ -11,7 +11,11 @@ router = APIRouter()
 
 @router.get("/", response_model=List[SavedResultResponse])
 def list_saved(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(SavedResult).filter(SavedResult.user_id == user.id).order_by(SavedResult.created_at.desc()).all()
+    try:
+        return db.query(SavedResult).filter(SavedResult.user_id == user.id).order_by(SavedResult.created_at.desc()).all()
+    except Exception:
+        # Table may not exist yet
+        return []
 
 
 @router.post("/", response_model=SavedResultResponse)

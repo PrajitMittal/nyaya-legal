@@ -83,12 +83,12 @@ export default function DocumentDrafterPage() {
   const [selectedType, setSelectedType] = useState(searchParams.get('type') || '');
   const [form, setForm] = useState({
     accused_name: searchParams.get('accused') || '',
-    fir_number: '',
-    police_station: '',
+    fir_number: searchParams.get('fir_number') || '',
+    police_station: searchParams.get('police_station') || '',
     sections: searchParams.get('sections') || '',
-    court_name: '',
-    arrest_date: '',
-    incident_description: '',
+    court_name: searchParams.get('court_name') || '',
+    arrest_date: searchParams.get('arrest_date') || '',
+    incident_description: searchParams.get('incident') || '',
   });
   const [partyRole, setPartyRole] = useState('petitioner');
   const [result, setResult] = useState(null);

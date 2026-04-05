@@ -254,8 +254,16 @@ export default function BailCalculatorPage() {
           <NextSteps steps={[
             {
               label: 'Draft Bail Application',
-              desc: 'Generate a court-ready bail application',
-              path: `/draft?type=default_bail&sections=${encodeURIComponent(form.sections)}`,
+              desc: 'Generate a court-ready bail application with all details pre-filled',
+              path: `/draft?type=${
+                result.eligibility?.find(e => e.eligible && e.type?.includes('Default'))
+                  ? 'default_bail'
+                  : result.eligibility?.find(e => e.eligible && e.type?.includes('436A'))
+                    ? '436a_release'
+                    : 'regular_bail'
+              }&sections=${encodeURIComponent(form.sections)}${
+                form.arrest_date ? '&arrest_date=' + encodeURIComponent(form.arrest_date) : ''
+              }`,
               show: result.eligibility?.some(e => e.eligible),
             },
             {

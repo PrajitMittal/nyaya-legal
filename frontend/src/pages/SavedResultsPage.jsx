@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { listSavedResults, deleteSavedResult } from '../api';
+import { useAuth } from '../contexts/AuthContext';
 
 const TOOL_LABELS = {
   bail_calculator: 'Bail Calculator',
@@ -13,20 +14,30 @@ const TOOL_LABELS = {
 };
 
 export default function SavedResultsPage() {
+  const { user, loading: authLoading } = useAuth();
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     loadResults();
-  }, []);
+  }, [user, authLoading]);
 
   const loadResults = async () => {
     try {
       const res = await listSavedResults();
-      setResults(res.data);
+      setResults(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      setError('Failed to load saved results');
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError('');
+      } else {
+        setError('Failed to load saved results. The feature may not be set up yet.');
+      }
     } finally {
       setLoading(false);
     }
@@ -41,16 +52,26 @@ export default function SavedResultsPage() {
     }
   };
 
-  if (loading) return <div className="text-center py-12 text-gray-500">Loading...</div>;
+  if (loading || authLoading) return <div className="text-center py-12 text-gray-500">Loading...</div>;
 
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">Saved Results</h1>
       <p className="text-gray-500 mb-6">Your saved tool results and analyses</p>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm">{error}</div>}
+      {!user && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
+          <p className="text-blue-800 font-medium mb-2">Sign in to save your results</p>
+          <p className="text-blue-600 text-sm mb-4">Your bail calculations, document drafts, and case analyses will be saved here.</p>
+          <Link to="/login" className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition">
+            Sign In
+          </Link>
+        </div>
+      )}
 
-      {results.length === 0 ? (
+      {user && error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm">{error}</div>}
+
+      {user && results.length === 0 && !error ? (
         <div className="text-center py-12">
           <p className="text-gray-500 mb-4">No saved results yet</p>
           <Link to="/" className="text-primary-600 font-medium hover:underline">Use a tool to get started</Link>
