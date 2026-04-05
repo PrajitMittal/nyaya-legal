@@ -1,18 +1,29 @@
 import { useState, useRef, useId } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
 import axios from 'axios';
 
-// Use the bundled worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.mjs',
-  import.meta.url
-).toString();
+/**
+ * Load pdf.js from CDN on demand (avoids bundling 40MB pdfjs-dist in node_modules
+ * which was pushing Vercel's serverless function over the 250MB limit).
+ */
+let pdfjsPromise = null;
+function loadPdfJs() {
+  if (pdfjsPromise) return pdfjsPromise;
+  pdfjsPromise = import(
+    /* @vite-ignore */
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs'
+  ).then((mod) => {
+    mod.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+    return mod;
+  });
+  return pdfjsPromise;
+}
 
 /**
- * Extracts text client-side using pdf.js. No upload, no size limit.
- * Returns extracted text or empty string if scanned/image PDF.
+ * Extracts text client-side using pdf.js from CDN. No upload, no size limit.
  */
 async function extractTextClientSide(file) {
+  const pdfjsLib = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pages = [];
@@ -27,23 +38,22 @@ async function extractTextClientSide(file) {
 
 /**
  * For scanned PDFs: render pages to images and send to Gemini vision API for OCR.
- * Sends compressed JPEGs of first N pages to keep under Vercel limits.
  */
 async function extractTextViaAI(file) {
+  const pdfjsLib = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const maxPages = Math.min(pdf.numPages, 5); // first 5 pages max
+  const maxPages = Math.min(pdf.numPages, 5);
   const images = [];
 
   for (let i = 1; i <= maxPages; i++) {
     const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 1.5 }); // good quality without being huge
+    const viewport = page.getViewport({ scale: 1.5 });
     const canvas = document.createElement('canvas');
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext('2d');
     await page.render({ canvasContext: ctx, viewport }).promise;
-    // Compress to JPEG at 70% quality
     const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
     images.push(dataUrl);
   }
