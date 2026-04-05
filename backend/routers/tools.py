@@ -71,16 +71,22 @@ async def ocr_pdf(data: dict):
     if not images:
         return {"error": "No images provided"}
     if len(images) > 10:
-        return {"error": "Too many pages (max 10)"}
+        images = images[:10]  # Silently truncate instead of rejecting
 
     from services.claude_analyzer import client
     from config import OPENROUTER_MODEL
     if not client:
-        return {"error": "AI service not configured. Set OPENROUTER_API_KEY."}
+        return {"error": "AI service not configured"}
 
     try:
+        # Use a vision-capable model (override if needed)
+        vision_model = OPENROUTER_MODEL
+        # Some models don't support vision — prefer known-good ones
+        if "gemini" not in vision_model.lower() and "gpt-4" not in vision_model.lower() and "claude" not in vision_model.lower():
+            vision_model = "google/gemini-2.0-flash-001"
+
         # Build message with images
-        content = [{"type": "text", "text": "Extract ALL text from these scanned document pages. Return only the extracted text, preserving the original structure and formatting. If there are tables, preserve them. Include every word visible in the images."}]
+        content = [{"type": "text", "text": "Extract ALL text from these scanned document pages. Return only the extracted text, preserving the original structure and formatting. If there are tables, preserve them. Include every word visible in the images. The document may be in English or Hindi."}]
         for img_data_url in images:
             content.append({
                 "type": "image_url",
@@ -89,7 +95,7 @@ async def ocr_pdf(data: dict):
 
         def _call():
             return client.chat.completions.create(
-                model=OPENROUTER_MODEL,
+                model=vision_model,
                 messages=[{"role": "user", "content": content}],
                 max_tokens=8000,
                 temperature=0.1,
@@ -98,12 +104,13 @@ async def ocr_pdf(data: dict):
         try:
             resp = await asyncio.to_thread(_call)
         except Exception:
-            # Fallback: sync call if to_thread fails on Vercel
             resp = _call()
 
         text = resp.choices[0].message.content or ""
         return {"text": text, "pages_processed": len(images)}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return {"error": f"AI OCR failed: {str(e)}"}
 
 
