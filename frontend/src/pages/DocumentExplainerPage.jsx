@@ -92,21 +92,21 @@ export default function DocumentExplainerPage() {
       {result && (
         <div className="space-y-6">
           {/* Document Type */}
-          {result.document_type && (
+          {(result.document_type || result.document_type_detected) && (
             <div className="bg-rose-50 border border-rose-200 rounded-xl p-5">
               <h2 className="text-sm font-semibold text-rose-600 uppercase tracking-wide mb-1">
                 Document Type Detected
               </h2>
-              <p className="text-xl font-bold text-gray-900">{result.document_type}</p>
+              <p className="text-xl font-bold text-gray-900">{result.document_type || result.document_type_detected}</p>
             </div>
           )}
 
           {/* Plain Language Explanation */}
-          {result.plain_language && (
+          {(result.plain_language || result.plain_language_explanation) && (
             <div className="bg-gradient-to-br from-rose-50 to-pink-50 border-2 border-rose-300 rounded-xl p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-3">Plain Language Explanation</h2>
               <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                {result.plain_language}
+                {result.plain_language || result.plain_language_explanation}
               </p>
             </div>
           )}
@@ -137,11 +137,11 @@ export default function DocumentExplainerPage() {
           )}
 
           {/* Conditions */}
-          {result.conditions && result.conditions.length > 0 && (
+          {(result.conditions || result.conditions_to_follow)?.length > 0 && (
             <div className="bg-white border rounded-xl p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-3">Conditions to Follow</h2>
               <ul className="space-y-2">
-                {result.conditions.map((item, i) => (
+                {(result.conditions || result.conditions_to_follow).map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="text-amber-500 mt-1 flex-shrink-0">&#9888;</span>
                     <span className="text-gray-700">{item}</span>

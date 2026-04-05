@@ -571,11 +571,52 @@ def case_explainer(data: dict):
     remaining = len(stage_list) - len(completed)
     estimated_months = remaining * 4  # rough average of 4 months per stage
 
+    # Build stage analysis
+    current_stage = case_data["current_stage"]
+    stage_desc_map = {
+        "FIR Registered": "The FIR has been lodged. Investigation will now begin.",
+        "Investigation": "Police are investigating the case. Evidence is being collected.",
+        "Chargesheet Filed": "Police have filed the chargesheet. Court will take cognizance.",
+        "Cognizance Taken": "The court has accepted the case. Charges will be framed next.",
+        "Charge Framing": "The court is deciding what charges to formally frame against the accused.",
+        "Prosecution Evidence": "Prosecution witnesses are being examined and cross-examined.",
+        "Defence Evidence": "The defence is presenting its witnesses and evidence.",
+        "Final Arguments": "Both sides are presenting their final arguments to the judge.",
+        "Judgment Reserved": "Arguments are complete. The judge is deliberating on the verdict.",
+        "Judgment Delivered": "The court has delivered its verdict.",
+    }
+
     return {
-        "case_data": case_data,
+        "case_info": {
+            "case_number": case_data.get("case_number", ""),
+            "cnr_number": case_data.get("case_number", "").replace("-", ""),
+            "court": case_data.get("court", ""),
+            "judge": case_data.get("judge", ""),
+            "case_type": case_data.get("case_type", ""),
+            "filing_date": case_data.get("filing_date", ""),
+            "petitioner": case_data.get("petitioner", ""),
+            "respondent": case_data.get("respondent", ""),
+            "current_stage": current_stage,
+            "next_date": case_data.get("next_hearing_date", ""),
+            "sections": case_data.get("sections", ""),
+        },
+        "timeline": [
+            {
+                "stage": t["stage"],
+                "status": "completed" if t["completed"] else ("current" if t["stage"] == current_stage else "upcoming"),
+                "date": t.get("date", ""),
+                "description": t.get("description", ""),
+            }
+            for t in case_data.get("timeline", [])
+        ],
         "plain_language_explanation": explanation,
+        "stage_analysis": {
+            "current_stage_description": stage_desc_map.get(current_stage, "Case is in progress."),
+            "bottleneck": f"Your case has been at the '{current_stage}' stage. Average cases spend 3-6 months at this stage." if remaining > 3 else None,
+            "average_duration_for_stage": f"Typical duration for '{current_stage}' stage: 3-6 months in district courts, 2-4 months in High Courts.",
+        },
         "next_steps": next_steps,
-        "estimated_time_to_conclusion": f"Approximately {estimated_months} months (rough estimate based on average timelines)",
+        "estimated_time_remaining": f"Approximately {estimated_months} months (rough estimate based on average timelines)",
         "important_note": "This data is generated for informational purposes. For verified case status, "
                           "please check the official eCourts website (ecourts.gov.in) or visit the court.",
     }
