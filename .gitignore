@@ -10,3 +10,4 @@ backend/legal_cases.db
 *.pyc
 __pycache__/
 .vercel/
+.vercel
