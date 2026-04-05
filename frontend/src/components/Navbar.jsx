@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 const NAV_GROUPS = [
   {
@@ -31,14 +32,18 @@ const NAV_GROUPS = [
 
 export default function Navbar() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
   const [openGroup, setOpenGroup] = useState(null);
   const [mobileSheet, setMobileSheet] = useState(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const dropdownRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   // Close dropdowns on route change
   useEffect(() => {
     setOpenGroup(null);
     setMobileSheet(null);
+    setShowUserMenu(false);
   }, [location.pathname]);
 
   // Close dropdown on outside click
@@ -120,6 +125,40 @@ export default function Navbar() {
                   )}
                 </div>
               ))}
+            </div>
+
+            {/* Auth section */}
+            <div className="hidden md:flex items-center ml-4 relative" ref={userMenuRef}>
+              {user ? (
+                <>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-primary-600 transition"
+                  >
+                    {user.user_metadata?.avatar_url ? (
+                      <img src={user.user_metadata.avatar_url} alt="" className="w-7 h-7 rounded-full" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-bold">
+                        {(user.email || '?')[0].toUpperCase()}
+                      </div>
+                    )}
+                  </button>
+                  {showUserMenu && (
+                    <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border py-2 z-50">
+                      <div className="px-4 py-2 border-b">
+                        <p className="text-sm font-medium text-gray-900 truncate">{user.user_metadata?.full_name || user.email}</p>
+                        <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                      </div>
+                      <Link to="/saved" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Saved Results</Link>
+                      <button onClick={signOut} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Sign Out</button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Link to="/login" className="text-sm text-primary-100 hover:text-white px-3 py-1.5 rounded-lg hover:bg-primary-600 transition font-medium">
+                  Sign In
+                </Link>
+              )}
             </div>
 
             {/* Mobile: hidden on desktop */}

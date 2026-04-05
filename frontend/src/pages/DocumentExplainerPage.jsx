@@ -3,6 +3,7 @@ import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
 import NextSteps from '../components/NextSteps';
+import AIDisclaimer from '../components/AIDisclaimer';
 
 const sampleTexts = [
   {
@@ -105,6 +106,7 @@ export default function DocumentExplainerPage() {
       {/* Results */}
       {result && (
         <div className="space-y-6">
+          <AIDisclaimer />
           {/* Document Type */}
           {(result.document_type || result.document_type_detected) && (
             <div className="bg-rose-50 border border-rose-200 rounded-xl p-5">

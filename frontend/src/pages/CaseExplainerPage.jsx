@@ -3,6 +3,7 @@ import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
 import NextSteps from '../components/NextSteps';
+import AIDisclaimer from '../components/AIDisclaimer';
 
 export default function CaseExplainerPage() {
   const [caseInput, setCaseInput] = useState('');
@@ -173,6 +174,7 @@ export default function CaseExplainerPage() {
       {/* Results */}
       {result && (
         <div className="space-y-6">
+          <AIDisclaimer />
           {/* Case Overview */}
           {result.case_info && (
             <div className="bg-white border rounded-xl p-6">
