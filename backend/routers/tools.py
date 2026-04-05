@@ -87,13 +87,20 @@ async def ocr_pdf(data: dict):
                 "image_url": {"url": img_data_url}
             })
 
-        resp = await asyncio.to_thread(
-            client.chat.completions.create,
-            model=OPENROUTER_MODEL,
-            messages=[{"role": "user", "content": content}],
-            max_tokens=8000,
-            temperature=0.1,
-        )
+        def _call():
+            return client.chat.completions.create(
+                model=OPENROUTER_MODEL,
+                messages=[{"role": "user", "content": content}],
+                max_tokens=8000,
+                temperature=0.1,
+            )
+
+        try:
+            resp = await asyncio.to_thread(_call)
+        except Exception:
+            # Fallback: sync call if to_thread fails on Vercel
+            resp = _call()
+
         text = resp.choices[0].message.content or ""
         return {"text": text, "pages_processed": len(images)}
     except Exception as e:

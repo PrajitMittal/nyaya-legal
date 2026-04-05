@@ -14,13 +14,12 @@ if OPENROUTER_API_KEY and OPENROUTER_API_KEY != "your_openrouter_key_here":
 MODEL = OPENROUTER_MODEL
 
 
-async def _chat(system: str, user: str, max_tokens: int = 4096) -> str | None:
-    """Send a chat completion request via OpenRouter."""
+def _chat_sync(system: str, user: str, max_tokens: int = 4096) -> str | None:
+    """Send a synchronous chat completion request via OpenRouter."""
     if not client:
         return None
     try:
-        response = await asyncio.to_thread(
-            client.chat.completions.create,
+        response = client.chat.completions.create(
             model=MODEL,
             max_tokens=max_tokens,
             messages=[
@@ -33,6 +32,18 @@ async def _chat(system: str, user: str, max_tokens: int = 4096) -> str | None:
     except Exception as e:
         print(f"OpenRouter API error: {e}")
         return None
+
+
+async def _chat(system: str, user: str, max_tokens: int = 4096) -> str | None:
+    """Async wrapper around _chat_sync using thread pool."""
+    if not client:
+        return None
+    try:
+        return await asyncio.to_thread(_chat_sync, system, user, max_tokens)
+    except Exception as e:
+        # Fallback: try synchronous call directly if to_thread fails
+        print(f"asyncio.to_thread failed ({e}), trying sync call")
+        return _chat_sync(system, user, max_tokens)
 
 
 ANALYSIS_PROMPT = """You are an expert Indian legal analyst with deep knowledge of the Indian Penal Code (IPC), Bharatiya Nyaya Sanhita (BNS), Code of Criminal Procedure (CrPC), and Indian court systems.
