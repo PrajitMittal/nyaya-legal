@@ -11,3 +11,6 @@ backend/legal_cases.db
 __pycache__/
 .vercel/
 .vercel
+venv/
+*.db
+.DS_Store
