@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import NextSteps from '../components/NextSteps';
 
 const SITUATIONS = [
   { key: 'arrest', label: 'When Arrested', icon: '\uD83D\uDD12', color: 'red' },
@@ -9,10 +11,19 @@ const SITUATIONS = [
 ];
 
 export default function RightsPage() {
+  const [searchParams] = useSearchParams();
   const [selected, setSelected] = useState(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-load from query param
+  useEffect(() => {
+    const topic = searchParams.get('topic');
+    if (topic && SITUATIONS.some(s => s.key === topic)) {
+      loadRights(topic);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadRights = async (situation) => {
     setSelected(situation);
@@ -103,6 +114,20 @@ export default function RightsPage() {
               </div>
             </div>
           )}
+
+          {/* Cross-tool links */}
+          <NextSteps steps={[
+            {
+              label: 'File an FIR',
+              desc: 'Get applicable sections and draft complaint',
+              path: '/fir-assistant',
+            },
+            {
+              label: 'Check Bail Eligibility',
+              desc: 'See if bail is available',
+              path: '/bail-calculator',
+            },
+          ]} />
         </div>
       )}
 

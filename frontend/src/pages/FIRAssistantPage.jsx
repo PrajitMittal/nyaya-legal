@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
+import NextSteps from '../components/NextSteps';
 
 export default function FIRAssistantPage() {
   const [incident, setIncident] = useState('');
@@ -192,6 +193,30 @@ export default function FIRAssistantPage() {
               )}
             </div>
           )}
+
+          {/* Cross-tool links */}
+          <NextSteps steps={(() => {
+            const sections = result.suggested_sections?.map(s => s.section).join(', ') || '';
+            return [
+              {
+                label: 'Check Bail Eligibility',
+                desc: 'See if bail applies for these sections',
+                path: `/bail-calculator?sections=${encodeURIComponent(sections)}`,
+                show: !!sections,
+              },
+              {
+                label: 'Know Your Rights',
+                desc: 'Your rights when filing an FIR',
+                path: '/rights?topic=fir',
+              },
+              {
+                label: 'Complaint to Magistrate',
+                desc: 'If police refuse to file your FIR',
+                path: `/draft?type=complaint_156_3&sections=${encodeURIComponent(sections)}`,
+                show: result.fir_mandatory,
+              },
+            ];
+          })()} />
         </div>
       )}
     </div>

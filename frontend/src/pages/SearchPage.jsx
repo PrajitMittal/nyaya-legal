@@ -1,24 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { searchKanoon } from '../api';
 import PDFUploadButton from '../components/PDFUploadButton';
 
 export default function SearchPage() {
-  const [query, setQuery] = useState('');
-  const [ipcSections, setIpcSections] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
+  const [ipcSections, setIpcSections] = useState(searchParams.get('sections') || '');
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const autoSearched = useRef(false);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!query && !ipcSections) {
+  // Auto-search if query params provided
+  useEffect(() => {
+    if (!autoSearched.current && (query || ipcSections)) {
+      autoSearched.current = true;
+      doSearch(query, ipcSections);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const doSearch = async (q, secs) => {
+    if (!q && !secs) {
       setError('Enter a search query or IPC sections');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      const res = await searchKanoon(query || undefined, ipcSections || undefined);
+      const res = await searchKanoon(q || undefined, secs || undefined);
       if (res.data.error) {
         setError(String(res.data.error));
       } else {
@@ -29,6 +39,11 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    doSearch(query, ipcSections);
   };
 
   return (

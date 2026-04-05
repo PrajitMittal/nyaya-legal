@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
+import NextSteps from '../components/NextSteps';
 
 const sampleTexts = [
   {
@@ -201,6 +202,20 @@ export default function DocumentExplainerPage() {
               </ol>
             </div>
           )}
+
+          {/* Cross-tool links */}
+          <NextSteps steps={[
+            {
+              label: 'Check Bail Eligibility',
+              desc: 'If this is a bail-related order',
+              path: '/bail-calculator',
+            },
+            {
+              label: 'Draft a Response',
+              desc: 'Generate a legal document based on this order',
+              path: '/draft',
+            },
+          ]} />
         </div>
       )}
     </div>

@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import PDFUploadButton from '../components/PDFUploadButton';
+import NextSteps from '../components/NextSteps';
 
 export default function BailCalculatorPage() {
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState({
-    sections: '',
-    arrest_date: '',
+    sections: searchParams.get('sections') || '',
+    arrest_date: searchParams.get('arrest_date') || '',
     chargesheet_filed: false,
     chargesheet_date: '',
   });
@@ -226,6 +229,26 @@ export default function BailCalculatorPage() {
             beyond what this calculator considers, including the specific facts of the case, the accused's
             criminal history, and the presiding judge's discretion.</p>
           </div>
+
+          {/* Cross-tool links */}
+          <NextSteps steps={[
+            {
+              label: 'Draft Bail Application',
+              desc: 'Generate a court-ready bail application',
+              path: `/draft?type=default_bail&sections=${encodeURIComponent(form.sections)}`,
+              show: result.eligibility?.some(e => e.eligible),
+            },
+            {
+              label: 'Know Your Rights During Arrest',
+              desc: 'Constitutional rights when in custody',
+              path: '/rights?topic=arrest',
+            },
+            {
+              label: 'Search Similar Cases',
+              desc: 'Find precedents on Indian Kanoon',
+              path: `/search?q=${encodeURIComponent('Section ' + form.sections + ' bail')}`,
+            },
+          ]} />
         </div>
       )}
     </div>

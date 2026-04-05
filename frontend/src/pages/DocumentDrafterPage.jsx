@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
+import NextSteps from '../components/NextSteps';
 
 const DOCUMENT_TYPES = [
   {
@@ -77,12 +79,13 @@ const isComplaintType = (docType) =>
   ['complaint_156_3', 'sp_complaint', 'nhrc_complaint'].includes(docType);
 
 export default function DocumentDrafterPage() {
-  const [selectedType, setSelectedType] = useState('');
+  const [searchParams] = useSearchParams();
+  const [selectedType, setSelectedType] = useState(searchParams.get('type') || '');
   const [form, setForm] = useState({
-    accused_name: '',
+    accused_name: searchParams.get('accused') || '',
     fir_number: '',
     police_station: '',
-    sections: '',
+    sections: searchParams.get('sections') || '',
     court_name: '',
     arrest_date: '',
     incident_description: '',
@@ -538,6 +541,21 @@ export default function DocumentDrafterPage() {
               </div>
             </div>
           </div>
+
+          {/* Cross-tool links */}
+          <NextSteps steps={[
+            {
+              label: 'Explain This Document',
+              desc: 'Get a plain language breakdown',
+              path: '/explain-document',
+            },
+            {
+              label: 'Search Similar Cases',
+              desc: 'Find precedents on Indian Kanoon',
+              path: `/search?q=${encodeURIComponent('Section ' + form.sections)}`,
+              show: !!form.sections,
+            },
+          ]} />
         </div>
       )}
     </div>

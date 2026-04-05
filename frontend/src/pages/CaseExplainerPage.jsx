@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
+import NextSteps from '../components/NextSteps';
 
 export default function CaseExplainerPage() {
   const [caseInput, setCaseInput] = useState('');
@@ -379,6 +380,29 @@ export default function CaseExplainerPage() {
               Always consult a qualified lawyer for legal decisions and verify information from official court records.
             </p>
           </div>
+
+          {/* Cross-tool links */}
+          <NextSteps steps={(() => {
+            const sections = result.case_info?.sections || '';
+            return [
+              {
+                label: 'Check Bail Eligibility',
+                desc: 'See if bail applies for these sections',
+                path: `/bail-calculator?sections=${encodeURIComponent(sections)}`,
+                show: !!sections,
+              },
+              {
+                label: 'Draft a Legal Document',
+                desc: 'Generate bail application or complaint',
+                path: `/draft?sections=${encodeURIComponent(sections)}`,
+              },
+              {
+                label: 'Search Similar Cases',
+                desc: 'Find precedents on Indian Kanoon',
+                path: `/search?q=${encodeURIComponent(sections ? 'Section ' + sections : caseInput)}`,
+              },
+            ];
+          })()} />
         </div>
       )}
     </div>
