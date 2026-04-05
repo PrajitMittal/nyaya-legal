@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
+import PDFUploadButton from '../components/PDFUploadButton';
 
 const DOCUMENT_TYPES = [
   {
@@ -223,6 +224,31 @@ export default function DocumentDrafterPage() {
             Provide the required information for your{' '}
             <span className="font-medium text-gray-700">{selectedDocType?.label}</span>.
           </p>
+
+          {/* PDF Upload to pre-fill fields */}
+          <div className="mb-5">
+            <PDFUploadButton
+              label="Upload FIR / Case Document to auto-fill fields"
+              onTextExtracted={(text) => {
+                // Try to extract key fields from the text
+                const firMatch = text.match(/FIR\s*(?:No|Number|#)?\.?\s*[:\-]?\s*(\d+[/\-]\d{4}|\d+)/i);
+                const psMatch = text.match(/(?:P\.?S\.?|Police\s*Station)\s*[:\-]?\s*([A-Za-z\s]+?)(?:\n|District)/i);
+                const secMatch = text.match(/(?:Section|Sec\.?)\s+(\d{1,4}[A-Z]?(?:\s*[,/&]\s*\d{1,4}[A-Z]?)*)/i);
+                const nameMatch = text.match(/(?:Complainant|Informant|Accused|Applicant)\s*[:\-]?\s*([A-Za-z\s\.]+?)(?:\n|S\/o|D\/o|W\/o|Age|,)/i);
+                const courtMatch = text.match(/(?:IN THE|BEFORE|Hon['']?ble)\s*(.+?(?:Court|Tribunal).+?)(?:\n|AT)/i);
+
+                setForm(prev => ({
+                  ...prev,
+                  fir_number: firMatch?.[1] || prev.fir_number,
+                  police_station: psMatch?.[1]?.trim() || prev.police_station,
+                  sections: secMatch?.[1]?.trim() || prev.sections,
+                  accused_name: nameMatch?.[1]?.trim() || prev.accused_name,
+                  court_name: courtMatch?.[1]?.trim() || prev.court_name,
+                  incident_description: text.slice(0, 2000),
+                }));
+              }}
+            />
+          </div>
 
           {/* Party Role Toggle */}
           <div className="mb-5 p-3 bg-gray-50 rounded-lg border">

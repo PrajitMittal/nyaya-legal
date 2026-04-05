@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
+import PDFUploadButton from '../components/PDFUploadButton';
 
 export default function FIRAssistantPage() {
   const [incident, setIncident] = useState('');
@@ -52,6 +53,11 @@ export default function FIRAssistantPage() {
           placeholder="Tell us what happened in your own words... e.g. 'My shop was burgled last night, electronics worth 5 lakhs stolen'"
           className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 mb-3"
         />
+        {/* PDF Upload */}
+        <div className="mb-3">
+          <PDFUploadButton onTextExtracted={(t) => setIncident(t)} label="Upload FIR / Complaint PDF" />
+        </div>
+
         <div className="flex flex-wrap gap-2 mb-4">
           <span className="text-xs text-gray-400">Try:</span>
           {quickScenarios.map((s, i) => (

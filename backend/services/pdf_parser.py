@@ -6,11 +6,14 @@ from typing import Optional
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Extract all text from a PDF file."""
     text = ""
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+    except Exception as e:
+        raise ValueError(f"Cannot read PDF: {str(e)}")
     return text.strip()
 
 
@@ -97,7 +100,7 @@ def parse_fir_fields(text: str) -> dict:
     )
     all_sections = list(set(ipc_sections + explicit_sections))
     # Filter to only valid IPC section numbers (1-511)
-    valid_sections = [s for s in all_sections if s.isdigit() and 1 <= int(s) <= 511 or not s.isdigit()]
+    valid_sections = [s for s in all_sections if (s.isdigit() and 1 <= int(s) <= 511) or (not s.isdigit() and len(s) <= 5)]
     if valid_sections:
         fields["ipc_sections"] = ", ".join(sorted(set(valid_sections)))
 
@@ -138,7 +141,6 @@ def categorize_offense(ipc_sections: str) -> Optional[str]:
         "354": "Assault on Woman",
         "506": "Criminal Intimidation",
         "120B": "Criminal Conspiracy",
-        "420": "Fraud / Cheating",
         "467": "Forgery",
         "468": "Forgery for Cheating",
         "471": "Using Forged Document",

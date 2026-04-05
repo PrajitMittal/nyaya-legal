@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import PDFUploadButton from '../components/PDFUploadButton';
 
 export default function BailCalculatorPage() {
   const [form, setForm] = useState({
@@ -44,6 +45,25 @@ export default function BailCalculatorPage() {
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-6 mb-6 space-y-4">
+        {/* PDF Upload */}
+        <PDFUploadButton
+          label="Upload FIR / Chargesheet PDF to auto-fill"
+          onTextExtracted={(text) => {
+            const secs = text.match(/(?:Section|Sec\.?)\s+(\d{1,4}[A-Z]?)/gi);
+            if (secs) {
+              const nums = secs.map(s => s.replace(/(?:Section|Sec\.?)\s+/i, '')).join(', ');
+              setForm(prev => ({ ...prev, sections: nums }));
+            }
+            const dateMatch = text.match(/(?:arrest|arrested|custody)\s*(?:on|dated?)?\s*[:\-]?\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})/i);
+            if (dateMatch) {
+              const parts = dateMatch[1].split(/[/\-\.]/);
+              if (parts.length === 3) {
+                const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+                setForm(prev => ({ ...prev, arrest_date: `${yr}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}` }));
+              }
+            }
+          }}
+        />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">IPC / BNS Sections Charged</label>
           <input

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from database import get_db
-from models import FIR
+from models import FIR, Analysis
 from schemas import FIRCreate, FIRResponse
 from services.pdf_parser import extract_text_from_pdf, parse_fir_fields
 from config import UPLOAD_DIR
@@ -99,6 +99,8 @@ def delete_fir(fir_id: int, db: Session = Depends(get_db)):
     fir = db.query(FIR).filter(FIR.id == fir_id).first()
     if not fir:
         raise HTTPException(status_code=404, detail="FIR not found")
+    # Delete associated analysis records first
+    db.query(Analysis).filter(Analysis.fir_id == fir_id).delete()
     db.delete(fir)
     db.commit()
     return {"message": "FIR deleted"}

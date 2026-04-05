@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
+import PDFUploadButton from '../components/PDFUploadButton';
 
 const sampleTexts = [
   {
@@ -58,6 +59,11 @@ export default function DocumentExplainerPage() {
           placeholder="Paste any court order, FIR, chargesheet, judgment, or legal notice here..."
           className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 mb-3"
         />
+
+        {/* PDF Upload */}
+        <div className="mb-3">
+          <PDFUploadButton onTextExtracted={(t) => setText(t)} label="Upload Court Order / Legal Document (PDF)" />
+        </div>
 
         {/* Quick examples */}
         <div className="flex flex-wrap gap-2 mb-4">

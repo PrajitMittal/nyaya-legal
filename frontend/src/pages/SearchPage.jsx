@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { searchKanoon } from '../api';
+import PDFUploadButton from '../components/PDFUploadButton';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
@@ -51,13 +52,29 @@ export default function SearchPage() {
               className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 transition"
-          >
-            {loading ? 'Searching...' : 'Search Cases'}
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 transition"
+            >
+              {loading ? 'Searching...' : 'Search Cases'}
+            </button>
+            <PDFUploadButton
+              label="Upload document to search"
+              onTextExtracted={(text) => {
+                // Extract key terms from uploaded document
+                const words = text.split(/\s+/).filter(w => w.length > 4).slice(0, 20).join(' ');
+                setQuery(words.slice(0, 200));
+                // Also try to extract IPC sections
+                const secs = text.match(/(?:Section|Sec\.?)\s+(\d{1,4}[A-Z]?)/gi);
+                if (secs) {
+                  const nums = secs.map(s => s.replace(/(?:Section|Sec\.?)\s+/i, '')).join(', ');
+                  setIpcSections(nums);
+                }
+              }}
+            />
+          </div>
         </div>
       </form>
 
@@ -83,7 +100,7 @@ export default function SearchPage() {
                   </div>
                   {r.court && <p className="text-sm text-gray-500 mb-1">{r.court}</p>}
                   {r.headline && (
-                    <p className="text-sm text-gray-600" dangerouslySetInnerHTML={{ __html: r.headline }} />
+                    <p className="text-sm text-gray-600">{r.headline.replace(/<[^>]*>/g, '')}</p>
                   )}
                   {r.citations && <p className="text-xs text-primary-600 mt-2">Citation: {r.citations}</p>}
                 </div>

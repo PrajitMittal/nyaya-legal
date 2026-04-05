@@ -2,7 +2,10 @@
 New module endpoints: Bail Calculator, FIR Assistant, Section Mapper, Know Your Rights.
 All work WITHOUT external APIs -- pure logic + static database.
 """
-from fastapi import APIRouter, Query
+import os
+import shutil
+import tempfile
+from fastapi import APIRouter, Query, UploadFile, File
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import hashlib
@@ -18,8 +21,33 @@ from services.ipc_database import (
     IPC_SECTIONS,
 )
 from services.claude_analyzer import translate_text as ai_translate
+from services.pdf_parser import extract_text_from_pdf
 
 router = APIRouter()
+
+
+# ============ PDF TEXT EXTRACTION (shared) ============
+
+@router.post("/extract-pdf")
+async def extract_pdf_text(file: UploadFile = File(...)):
+    """Extract text from an uploaded PDF. Used by multiple tools."""
+    if not file.filename.lower().endswith(".pdf"):
+        return {"error": "Only PDF files are accepted"}
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            tmp_path = tmp.name
+
+        text = extract_text_from_pdf(tmp_path)
+        os.unlink(tmp_path)
+
+        if not text or len(text.strip()) < 10:
+            return {"error": "Could not extract text from PDF. The file may be scanned/image-based."}
+
+        return {"text": text, "char_count": len(text)}
+    except Exception as e:
+        return {"error": f"Failed to process PDF: {str(e)}"}
 
 
 # ============ BAIL ELIGIBILITY CALCULATOR ============

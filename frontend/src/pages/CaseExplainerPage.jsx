@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
+import PDFUploadButton from '../components/PDFUploadButton';
 
 export default function CaseExplainerPage() {
   const [caseInput, setCaseInput] = useState('');
@@ -86,6 +87,27 @@ export default function CaseExplainerPage() {
             placeholder={inputType === 'cnr_number' ? 'e.g. DLST01-001234-2024' : 'e.g. CC/1234/2024'}
             required
             className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+
+        {/* PDF Upload */}
+        <div className="mb-3">
+          <PDFUploadButton
+            label="Upload Case Document (PDF)"
+            onTextExtracted={(text) => {
+              // Try to extract case/CNR number
+              const cnrMatch = text.match(/[A-Z]{4}\d{2}-\d{6}-\d{4}/);
+              const caseMatch = text.match(/(?:Case\s*No|CC|SC|CRL\.?A|SLP)\s*[.:\-/]?\s*\d+\s*[/\-]\s*\d{4}/i);
+              if (cnrMatch) {
+                setCaseInput(cnrMatch[0]);
+                setInputType('cnr_number');
+              } else if (caseMatch) {
+                setCaseInput(caseMatch[0]);
+                setInputType('case_number');
+              } else {
+                setCaseInput(text.slice(0, 100));
+              }
+            }}
           />
         </div>
 
