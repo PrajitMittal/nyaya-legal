@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import TranslateToggle from '../components/TranslateToggle';
 
 const DOCUMENT_TYPES = [
   {
@@ -85,10 +86,12 @@ export default function DocumentDrafterPage() {
     arrest_date: '',
     incident_description: '',
   });
+  const [partyRole, setPartyRole] = useState('petitioner');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [translatedDoc, setTranslatedDoc] = useState(null);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -112,6 +115,7 @@ export default function DocumentDrafterPage() {
         police_station: form.police_station,
         sections: form.sections,
         court_name: form.court_name,
+        party_role: partyRole,
       };
       if (isBailType(selectedType)) {
         payload.arrest_date = form.arrest_date;
@@ -129,8 +133,8 @@ export default function DocumentDrafterPage() {
   };
 
   const handleCopy = () => {
-    if (result?.content) {
-      navigator.clipboard.writeText(result.content);
+    if (result?.document || result?.content) {
+      navigator.clipboard.writeText(translatedDoc || result.document || result.content);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -220,11 +224,36 @@ export default function DocumentDrafterPage() {
             <span className="font-medium text-gray-700">{selectedDocType?.label}</span>.
           </p>
 
+          {/* Party Role Toggle */}
+          <div className="mb-5 p-3 bg-gray-50 rounded-lg border">
+            <label className="block text-sm font-medium text-gray-700 mb-2">I am the</label>
+            <div className="flex gap-3">
+              {[
+                { id: 'petitioner', label: 'Petitioner / Complainant', desc: 'Filing or pursuing the case' },
+                { id: 'respondent', label: 'Respondent / Accused', desc: 'Defending against charges' },
+              ].map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setPartyRole(r.id)}
+                  className={`flex-1 rounded-lg p-3 text-left border-2 transition-all ${
+                    partyRole === r.id
+                      ? 'border-slate-600 bg-slate-50 ring-1 ring-slate-300'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-sm font-semibold text-gray-800">{r.label}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{r.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Common Fields */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Accused / Applicant Name
+                {partyRole === 'respondent' ? 'Accused / Applicant Name' : 'Complainant / Petitioner Name'}
               </label>
               <input
                 name="accused_name"
@@ -426,10 +455,18 @@ export default function DocumentDrafterPage() {
             </div>
           </div>
 
+          {/* Translation Toggle */}
+          <div className="mb-3">
+            <TranslateToggle
+              text={result.document || result.content}
+              onTranslated={setTranslatedDoc}
+            />
+          </div>
+
           {/* Document Content */}
           <div className="bg-gray-50 border rounded-lg p-6 mb-4 overflow-auto max-h-[600px]">
             <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">
-              {result.content}
+              {translatedDoc || result.document || result.content}
             </pre>
           </div>
 

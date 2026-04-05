@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import axios from 'axios';
+import TranslateToggle from '../components/TranslateToggle';
 
 export default function FIRAssistantPage() {
   const [incident, setIncident] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
+  const [translatedDraft, setTranslatedDraft] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -161,11 +163,14 @@ export default function FIRAssistantPage() {
               </div>
               {showDraft && (
                 <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="mb-2">
+                    <TranslateToggle text={result.draft_complaint} onTranslated={setTranslatedDraft} />
+                  </div>
                   <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
-                    {result.draft_complaint}
+                    {translatedDraft || result.draft_complaint}
                   </pre>
                   <button
-                    onClick={() => navigator.clipboard.writeText(result.draft_complaint)}
+                    onClick={() => navigator.clipboard.writeText(translatedDraft || result.draft_complaint)}
                     className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 transition">
                     Copy to Clipboard
                   </button>

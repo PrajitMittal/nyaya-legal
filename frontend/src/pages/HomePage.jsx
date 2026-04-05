@@ -14,6 +14,7 @@ const MODULES = [
       </svg>
     ),
     tag: 'Citizens',
+    key: 'fir-assistant',
   },
   {
     title: 'Bail Calculator',
@@ -26,6 +27,7 @@ const MODULES = [
       </svg>
     ),
     tag: 'Citizens + Lawyers',
+    key: 'bail-calculator',
   },
   {
     title: 'Case Explainer',
@@ -38,6 +40,7 @@ const MODULES = [
       </svg>
     ),
     tag: 'Citizens',
+    key: 'case-explainer',
   },
   {
     title: 'Document Drafter',
@@ -50,6 +53,7 @@ const MODULES = [
       </svg>
     ),
     tag: 'Lawyers',
+    key: 'document-drafter',
   },
   {
     title: 'Explain Court Order',
@@ -62,6 +66,7 @@ const MODULES = [
       </svg>
     ),
     tag: 'Citizens',
+    key: 'explain-court-order',
   },
   {
     title: 'IPC/BNS Mapper',
@@ -74,6 +79,7 @@ const MODULES = [
       </svg>
     ),
     tag: 'Lawyers + Police',
+    key: 'section-mapper',
   },
   {
     title: 'Know Your Rights',
@@ -86,6 +92,7 @@ const MODULES = [
       </svg>
     ),
     tag: 'Citizens',
+    key: 'know-rights',
   },
   {
     title: 'AI Case Analysis',
@@ -98,6 +105,7 @@ const MODULES = [
       </svg>
     ),
     tag: 'All Users',
+    key: 'ai-case-analysis',
   },
 ];
 
@@ -129,8 +137,184 @@ const PERSONAS = [
   },
 ];
 
+// Role-based module ordering: keys listed first appear at top, rest follow in original order
+const ROLE_MODULE_ORDER = {
+  citizen: ['fir-assistant', 'bail-calculator', 'know-rights'],
+  lawyer: ['document-drafter', 'section-mapper', 'ai-case-analysis'],
+  police: ['ai-case-analysis', 'section-mapper', 'bail-calculator'],
+};
+
+// Role-based hero CTA buttons
+const ROLE_CTAS = {
+  citizen: [
+    { label: 'File an FIR', path: '/fir-assistant', style: 'bg-white text-primary-800 hover:bg-primary-50 shadow-lg shadow-black/20' },
+    { label: 'Check Bail Eligibility', path: '/bail-calculator', style: 'bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-black/20' },
+    { label: 'Know Your Rights', path: '/rights', style: 'border-2 border-white/30 text-white hover:bg-white/10' },
+  ],
+  lawyer: [
+    { label: 'Draft a Document', path: '/draft', style: 'bg-white text-primary-800 hover:bg-primary-50 shadow-lg shadow-black/20' },
+    { label: 'IPC/BNS Mapper', path: '/section-mapper', style: 'bg-teal-500 text-white hover:bg-teal-600 shadow-lg shadow-black/20' },
+    { label: 'AI Case Analysis', path: '/upload', style: 'border-2 border-white/30 text-white hover:bg-white/10' },
+  ],
+  police: [
+    { label: 'AI Case Analysis', path: '/upload', style: 'bg-white text-primary-800 hover:bg-primary-50 shadow-lg shadow-black/20' },
+    { label: 'IPC/BNS Mapper', path: '/section-mapper', style: 'bg-teal-500 text-white hover:bg-teal-600 shadow-lg shadow-black/20' },
+    { label: 'Check Bail Eligibility', path: '/bail-calculator', style: 'border-2 border-white/30 text-white hover:bg-white/10' },
+  ],
+  general: [
+    { label: 'File an FIR', path: '/fir-assistant', style: 'bg-white text-primary-800 hover:bg-primary-50 shadow-lg shadow-black/20' },
+    { label: 'Check Bail Eligibility', path: '/bail-calculator', style: 'bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-black/20' },
+    { label: 'Know Your Rights', path: '/rights', style: 'border-2 border-white/30 text-white hover:bg-white/10' },
+  ],
+};
+
+const ROLE_LABELS = {
+  citizen: 'Citizen',
+  lawyer: 'Lawyer',
+  police: 'Police',
+  general: 'Explorer',
+};
+
+function getOrderedModules(role) {
+  const priorityKeys = ROLE_MODULE_ORDER[role];
+  if (!priorityKeys) return MODULES;
+  const priority = MODULES.filter((m) => priorityKeys.includes(m.key));
+  const rest = MODULES.filter((m) => !priorityKeys.includes(m.key));
+  // Maintain the order specified in priorityKeys
+  const sorted = priorityKeys.map((k) => MODULES.find((m) => m.key === k)).filter(Boolean);
+  return [...sorted, ...rest];
+}
+
+// Role selection screen component
+function RoleSelection({ onSelect }) {
+  const roles = [
+    {
+      id: 'citizen',
+      label: 'Citizen',
+      description: 'I need help with an FIR, bail, understanding my case, or knowing my rights',
+      gradient: 'from-blue-500 to-blue-700',
+      hoverGradient: 'from-blue-600 to-blue-800',
+      ring: 'ring-blue-400',
+      icon: (
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+    },
+    {
+      id: 'lawyer',
+      label: 'Lawyer',
+      description: 'I need legal research, document drafting, case analysis, or section mapping',
+      gradient: 'from-indigo-500 to-indigo-700',
+      hoverGradient: 'from-indigo-600 to-indigo-800',
+      ring: 'ring-indigo-400',
+      icon: (
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      ),
+    },
+    {
+      id: 'police',
+      label: 'Police',
+      description: 'I need investigation tools, chargesheet tracking, case management, or FIR analysis',
+      gradient: 'from-slate-500 to-slate-700',
+      hoverGradient: 'from-slate-600 to-slate-800',
+      ring: 'ring-slate-400',
+      icon: (
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-primary-900 to-indigo-950 flex items-center justify-center px-4 py-12">
+      <div className="max-w-4xl w-full">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur rounded-full px-5 py-2 text-sm text-white/80 mb-6">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            AI-Powered Legal Intelligence
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-200">Nyaya</span>
+          </h1>
+          <p className="text-lg text-primary-200 max-w-xl mx-auto">
+            Select your role to get a personalized experience
+          </p>
+        </div>
+
+        {/* Role Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          {roles.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => onSelect(r.id)}
+              className={`group relative bg-gradient-to-br ${r.gradient} rounded-2xl p-6 text-white text-left transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl hover:shadow-black/30 focus:outline-none focus:ring-4 ${r.ring} focus:ring-offset-2 focus:ring-offset-gray-900 cursor-pointer`}
+            >
+              {/* Subtle shimmer overlay on hover */}
+              <div className="absolute inset-0 rounded-2xl bg-white/0 group-hover:bg-white/5 transition-all duration-300"></div>
+              <div className="relative">
+                <div className="bg-white/15 backdrop-blur w-16 h-16 rounded-2xl flex items-center justify-center mb-5 group-hover:bg-white/25 transition-colors duration-300">
+                  {r.icon}
+                </div>
+                <h3 className="text-2xl font-bold mb-2">{r.label}</h3>
+                <p className="text-white/75 text-sm leading-relaxed">{r.description}</p>
+                <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-white/90 group-hover:text-white transition-colors">
+                  Get Started
+                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Skip link */}
+        <div className="text-center">
+          <button
+            onClick={() => onSelect('general')}
+            className="text-white/50 hover:text-white/80 text-sm transition-colors duration-200 underline underline-offset-4 decoration-white/20 hover:decoration-white/50 cursor-pointer"
+          >
+            Skip — I'll explore on my own
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Role badge component
+function RoleBadge({ role, onChangeRole }) {
+  const colors = {
+    citizen: 'bg-blue-100 text-blue-800 border-blue-200',
+    lawyer: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    police: 'bg-slate-100 text-slate-800 border-slate-200',
+    general: 'bg-gray-100 text-gray-700 border-gray-200',
+  };
+
+  return (
+    <div className="flex items-center justify-end max-w-7xl mx-auto px-4 pt-4 -mb-4">
+      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium ${colors[role] || colors.general}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60"></span>
+        {ROLE_LABELS[role] || 'Explorer'}
+        <button
+          onClick={onChangeRole}
+          className="ml-1 text-xs opacity-60 hover:opacity-100 transition-opacity underline underline-offset-2 cursor-pointer"
+        >
+          Change
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [stats, setStats] = useState({ total: 0, recent: [] });
+  const [role, setRole] = useState(localStorage.getItem('nyaya_role') || 'general');
 
   useEffect(() => {
     listFIRs().then((res) => {
@@ -138,8 +322,29 @@ export default function HomePage() {
     }).catch(() => {});
   }, []);
 
+  const handleSelectRole = (selectedRole) => {
+    localStorage.setItem('nyaya_role', selectedRole);
+    setRole(selectedRole);
+  };
+
+  const handleChangeRole = () => {
+    localStorage.removeItem('nyaya_role');
+    setRole(null);
+  };
+
+  // Show role selection if no role is chosen
+  if (!role) {
+    return <RoleSelection onSelect={handleSelectRole} />;
+  }
+
+  const orderedModules = getOrderedModules(role);
+  const ctas = ROLE_CTAS[role] || ROLE_CTAS.general;
+
   return (
     <div>
+      {/* Role Badge */}
+      <RoleBadge role={role} onChangeRole={handleChangeRole} />
+
       {/* Hero Section - Full Width */}
       <div className="bg-gradient-to-br from-primary-900 via-primary-800 to-indigo-900 text-white">
         <div className="max-w-7xl mx-auto px-4 py-16 md:py-24">
@@ -157,15 +362,11 @@ export default function HomePage() {
               From FIR filing to bail applications to case tracking — everything the Indian justice system needs, powered by AI.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link to="/fir-assistant" className="bg-white text-primary-800 px-8 py-3.5 rounded-xl font-semibold hover:bg-primary-50 transition shadow-lg shadow-black/20">
-                File an FIR
-              </Link>
-              <Link to="/bail-calculator" className="bg-green-500 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-green-600 transition shadow-lg shadow-black/20">
-                Check Bail Eligibility
-              </Link>
-              <Link to="/rights" className="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-white/10 transition">
-                Know Your Rights
-              </Link>
+              {ctas.map((cta, i) => (
+                <Link key={i} to={cta.path} className={`${cta.style} px-8 py-3.5 rounded-xl font-semibold transition`}>
+                  {cta.label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>
@@ -195,7 +396,7 @@ export default function HomePage() {
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {MODULES.map((m, i) => (
+          {orderedModules.map((m, i) => (
             <Link
               key={i}
               to={m.path}

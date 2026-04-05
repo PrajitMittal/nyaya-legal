@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import TranslateToggle from '../components/TranslateToggle';
 
 const sampleTexts = [
   {
@@ -17,6 +18,7 @@ export default function DocumentExplainerPage() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [translatedExplanation, setTranslatedExplanation] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,9 +106,15 @@ export default function DocumentExplainerPage() {
           {/* Plain Language Explanation */}
           {(result.plain_language || result.plain_language_explanation) && (
             <div className="bg-gradient-to-br from-rose-50 to-pink-50 border-2 border-rose-300 rounded-xl p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-3">Plain Language Explanation</h2>
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <h2 className="text-lg font-bold text-gray-900">Plain Language Explanation</h2>
+                <TranslateToggle
+                  text={result.plain_language || result.plain_language_explanation}
+                  onTranslated={setTranslatedExplanation}
+                />
+              </div>
               <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                {result.plain_language || result.plain_language_explanation}
+                {translatedExplanation || result.plain_language || result.plain_language_explanation}
               </p>
             </div>
           )}

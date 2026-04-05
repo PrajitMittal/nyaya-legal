@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import TranslateToggle from '../components/TranslateToggle';
 
 export default function CaseExplainerPage() {
   const [caseInput, setCaseInput] = useState('');
@@ -7,6 +8,8 @@ export default function CaseExplainerPage() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [partyRole, setPartyRole] = useState('petitioner');
+  const [translatedExplanation, setTranslatedExplanation] = useState(null);
 
   const quickExamples = [
     'DLST01-001234-2024',
@@ -23,8 +26,8 @@ export default function CaseExplainerPage() {
     setResult(null);
     try {
       const body = inputType === 'cnr_number'
-        ? { cnr_number: caseInput.trim() }
-        : { case_number: caseInput.trim() };
+        ? { cnr_number: caseInput.trim(), party_role: partyRole }
+        : { case_number: caseInput.trim(), party_role: partyRole };
       const res = await axios.post('/api/tools/case-explainer', body);
       setResult(res.data);
     } catch (err) {
@@ -100,6 +103,30 @@ export default function CaseExplainerPage() {
           ))}
         </div>
 
+        {/* Party Role */}
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+          <label className="block text-sm font-medium text-gray-700 mb-2">I am the</label>
+          <div className="flex gap-3">
+            {[
+              { id: 'petitioner', label: 'Petitioner / Complainant' },
+              { id: 'respondent', label: 'Respondent / Accused' },
+            ].map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setPartyRole(r.id)}
+                className={`flex-1 rounded-lg py-2 px-3 text-sm font-medium border-2 transition-all ${
+                  partyRole === r.id
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
@@ -149,10 +176,16 @@ export default function CaseExplainerPage() {
             <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-6">
               <div className="flex items-start gap-3">
                 <span className="text-2xl flex-shrink-0">&#128172;</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-indigo-900 mb-2">In Plain Language</h2>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <h2 className="text-lg font-semibold text-indigo-900">In Plain Language</h2>
+                    <TranslateToggle
+                      text={result.plain_language_explanation}
+                      onTranslated={setTranslatedExplanation}
+                    />
+                  </div>
                   <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                    {result.plain_language_explanation}
+                    {translatedExplanation || result.plain_language_explanation}
                   </p>
                 </div>
               </div>
