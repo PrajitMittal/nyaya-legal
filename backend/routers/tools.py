@@ -62,6 +62,44 @@ async def extract_pdf_text(file: UploadFile = File(...)):
                 pass
 
 
+# ============ AI OCR FOR SCANNED PDFs ============
+
+@router.post("/ocr-pdf")
+async def ocr_pdf(data: dict):
+    """Use Gemini vision to extract text from scanned PDF page images."""
+    images = data.get("images", [])
+    if not images:
+        return {"error": "No images provided"}
+    if len(images) > 10:
+        return {"error": "Too many pages (max 10)"}
+
+    from services.claude_analyzer import client
+    from config import OPENROUTER_MODEL
+    if not client:
+        return {"error": "AI service not configured. Set OPENROUTER_API_KEY."}
+
+    try:
+        # Build message with images
+        content = [{"type": "text", "text": "Extract ALL text from these scanned document pages. Return only the extracted text, preserving the original structure and formatting. If there are tables, preserve them. Include every word visible in the images."}]
+        for img_data_url in images:
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": img_data_url}
+            })
+
+        resp = await asyncio.to_thread(
+            client.chat.completions.create,
+            model=OPENROUTER_MODEL,
+            messages=[{"role": "user", "content": content}],
+            max_tokens=8000,
+            temperature=0.1,
+        )
+        text = resp.choices[0].message.content or ""
+        return {"text": text, "pages_processed": len(images)}
+    except Exception as e:
+        return {"error": f"AI OCR failed: {str(e)}"}
+
+
 # ============ BAIL ELIGIBILITY CALCULATOR ============
 
 @router.post("/bail-calculator")

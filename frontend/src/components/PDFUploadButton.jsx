@@ -1,9 +1,62 @@
 import { useState, useRef, useId } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
 import axios from 'axios';
+
+// Use the bundled worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.mjs',
+  import.meta.url
+).toString();
+
+/**
+ * Extracts text client-side using pdf.js. No upload, no size limit.
+ * Returns extracted text or empty string if scanned/image PDF.
+ */
+async function extractTextClientSide(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pages = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items.map((item) => item.str).join(' ');
+    pages.push(text);
+  }
+  return pages.join('\n\n').trim();
+}
+
+/**
+ * For scanned PDFs: render pages to images and send to Gemini vision API for OCR.
+ * Sends compressed JPEGs of first N pages to keep under Vercel limits.
+ */
+async function extractTextViaAI(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const maxPages = Math.min(pdf.numPages, 5); // first 5 pages max
+  const images = [];
+
+  for (let i = 1; i <= maxPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 }); // good quality without being huge
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    // Compress to JPEG at 70% quality
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    images.push(dataUrl);
+  }
+
+  const res = await axios.post('/api/tools/ocr-pdf', { images }, { timeout: 60000 });
+  if (res.data.error) throw new Error(res.data.error);
+  return res.data.text || '';
+}
 
 export default function PDFUploadButton({ onTextExtracted, label = 'Upload PDF', className = '' }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
   const fileRef = useRef();
   const inputId = useId();
 
@@ -14,43 +67,46 @@ export default function PDFUploadButton({ onTextExtracted, label = 'Upload PDF',
       setError('Only PDF files are accepted');
       return;
     }
-    if (file.size > 4 * 1024 * 1024) {
-      setError('File too large (max 4MB). Try a smaller PDF.');
+    if (file.size > 50 * 1024 * 1024) {
+      setError('File too large (max 50MB).');
       return;
     }
     setUploading(true);
     setError('');
+    setStatus('Extracting text...');
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await axios.post('/api/tools/extract-pdf', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 30000,
-      });
-      if (res.data.error) {
-        setError(res.data.error);
-      } else if (res.data.text) {
-        onTextExtracted(res.data.text);
+      // Step 1: Try client-side text extraction (fast, no upload)
+      let text = '';
+      try {
+        text = await extractTextClientSide(file);
+      } catch (err) {
+        console.warn('Client-side PDF extraction failed:', err.message);
+      }
+
+      // Step 2: If little/no text found, try AI OCR for scanned PDFs
+      if (text.length < 50) {
+        setStatus('Scanned PDF detected — running AI OCR...');
+        try {
+          text = await extractTextViaAI(file);
+        } catch (err) {
+          console.warn('AI OCR failed:', err.message);
+          if (text.length < 10) {
+            setError('Could not extract text. The PDF may be a scanned image. AI OCR also failed: ' + (err.message || 'Unknown error'));
+            return;
+          }
+        }
+      }
+
+      if (text && text.length >= 10) {
+        onTextExtracted(text);
       } else {
-        setError('No text could be extracted from this PDF');
+        setError('No text could be extracted from this PDF.');
       }
     } catch (err) {
-      const status = err.response?.status;
-      let msg = 'Failed to extract text from PDF';
-      if (status === 413) {
-        msg = 'File too large for server. Try a smaller PDF (under 4MB).';
-      } else if (typeof err.response?.data === 'string') {
-        msg = err.response.data.slice(0, 200);
-      } else if (err.response?.data?.error) {
-        msg = String(err.response.data.error);
-      } else if (err.response?.data?.detail) {
-        msg = String(err.response.data.detail);
-      } else if (err.message) {
-        msg = String(err.message);
-      }
-      setError(msg);
+      setError('Failed to process PDF: ' + (err.message || 'Unknown error'));
     } finally {
       setUploading(false);
+      setStatus('');
       if (fileRef.current) fileRef.current.value = '';
     }
   };
@@ -79,7 +135,7 @@ export default function PDFUploadButton({ onTextExtracted, label = 'Upload PDF',
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
             </svg>
-            Extracting text...
+            {status || 'Processing...'}
           </>
         ) : (
           <>
