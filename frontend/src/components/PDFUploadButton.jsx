@@ -1,16 +1,21 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useId } from 'react';
 import axios from 'axios';
 
 export default function PDFUploadButton({ onTextExtracted, label = 'Upload PDF', className = '' }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef();
+  const inputId = useId();
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setError('Only PDF files are accepted');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File too large (max 10MB)');
       return;
     }
     setUploading(true);
@@ -24,11 +29,14 @@ export default function PDFUploadButton({ onTextExtracted, label = 'Upload PDF',
       });
       if (res.data.error) {
         setError(res.data.error);
-      } else {
+      } else if (res.data.text) {
         onTextExtracted(res.data.text);
+      } else {
+        setError('No text could be extracted from this PDF');
       }
-    } catch {
-      setError('Failed to extract text from PDF');
+    } catch (err) {
+      const msg = err.response?.data?.error || err.response?.data?.detail || err.message || 'Failed to extract text from PDF';
+      setError(msg);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -43,10 +51,10 @@ export default function PDFUploadButton({ onTextExtracted, label = 'Upload PDF',
         accept=".pdf"
         onChange={handleUpload}
         className="hidden"
-        id="pdf-upload"
+        id={inputId}
       />
       <label
-        htmlFor="pdf-upload"
+        htmlFor={inputId}
         className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed text-sm font-medium transition-all cursor-pointer ${
           uploading
             ? 'border-gray-300 bg-gray-50 text-gray-400 cursor-wait'

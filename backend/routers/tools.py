@@ -34,13 +34,19 @@ async def extract_pdf_text(file: UploadFile = File(...)):
     if not file.filename.lower().endswith(".pdf"):
         return {"error": "Only PDF files are accepted"}
 
+    tmp_path = None
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            shutil.copyfileobj(file.file, tmp)
-            tmp_path = tmp.name
+        # Read file content first
+        content = await file.read()
+        if len(content) < 100:
+            return {"error": "File appears to be empty or too small"}
+
+        # Write to temp file
+        tmp_path = os.path.join(tempfile.gettempdir(), f"nyaya_{os.getpid()}.pdf")
+        with open(tmp_path, "wb") as f:
+            f.write(content)
 
         text = extract_text_from_pdf(tmp_path)
-        os.unlink(tmp_path)
 
         if not text or len(text.strip()) < 10:
             return {"error": "Could not extract text from PDF. The file may be scanned/image-based."}
@@ -48,6 +54,12 @@ async def extract_pdf_text(file: UploadFile = File(...)):
         return {"text": text, "char_count": len(text)}
     except Exception as e:
         return {"error": f"Failed to process PDF: {str(e)}"}
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
 
 
 # ============ BAIL ELIGIBILITY CALCULATOR ============
