@@ -907,41 +907,45 @@ def get_incident_sections(incident_type: str) -> List[dict]:
     }
 
     incident_lower = incident_type.lower().strip()
+    matched_section_nums = set()
+    matched_keys = set()
 
     # First check aliases for better fuzzy matching
     for key, alias_list in aliases.items():
         for alias in alias_list:
             if alias in incident_lower:
-                if key in incident_map:
-                    matched_sections = incident_map[key]
-                    results = []
-                    for s in matched_sections:
-                        sec = get_section(s)
-                        if sec:
-                            results.append({
-                                "section": s, "name": sec["name"],
-                                "bailable": sec["bailable"], "cognizable": sec["cognizable"],
-                                "punishment": sec["punishment"],
-                            })
-                    return results
+                if key in incident_map and key not in matched_keys:
+                    matched_keys.add(key)
+                    for s in incident_map[key]:
+                        matched_section_nums.add(s)
 
-    # Then check direct keyword match
+    # Then check direct keyword matches (find ALL matching keywords)
     for key, sections in incident_map.items():
-        if key in incident_lower:
-            results = []
+        if key in incident_lower and key not in matched_keys:
+            matched_keys.add(key)
             for s in sections:
-                sec = get_section(s)
-                if sec:
-                    results.append({
-                        "section": s,
-                        "name": sec["name"],
-                        "bailable": sec["bailable"],
-                        "cognizable": sec["cognizable"],
-                        "punishment": sec["punishment"],
-                    })
-            return results
+                matched_section_nums.add(s)
 
-    return []
+    # Build results from all matched sections
+    results = []
+    seen = set()
+    for s in matched_section_nums:
+        if s not in seen:
+            seen.add(s)
+            sec = get_section(s)
+            if sec:
+                results.append({
+                    "section": s,
+                    "name": sec["name"],
+                    "bailable": sec["bailable"],
+                    "cognizable": sec["cognizable"],
+                    "punishment": sec["punishment"],
+                })
+
+    # Sort by severity (non-bailable first, then by section number)
+    results.sort(key=lambda x: (x.get("bailable", True), x["section"]))
+
+    return results
 
 
 def get_all_sections_list() -> List[dict]:
