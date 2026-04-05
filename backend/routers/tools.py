@@ -7,6 +7,7 @@ from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import hashlib
 import re
+import asyncio
 from services.ipc_database import (
     calculate_bail_eligibility,
     get_section,
@@ -16,6 +17,7 @@ from services.ipc_database import (
     get_ipc_from_bns,
     IPC_SECTIONS,
 )
+from services.claude_analyzer import translate_text as ai_translate
 
 router = APIRouter()
 
@@ -2000,4 +2002,468 @@ def case_status_tracker(case_id: str):
         ],
         "disclaimer": "Case timelines are estimates based on national averages. Actual duration varies "
                        "significantly by court, state, case complexity, and other factors.",
+    }
+
+
+# ============ TRANSLATION ENDPOINT ============
+
+# Hindi translations for common legal terms
+_HINDI_LEGAL_TERMS: Dict[str, str] = {
+    "bail": "zamanat",
+    "fir": "pratham soochna report",
+    "accused": "aaropee",
+    "court": "adalat",
+    "judge": "nyayadheesh",
+    "police": "police",
+    "arrest": "giraftaari",
+    "lawyer": "vakeel",
+    "complaint": "shikayat",
+    "witness": "gawaah",
+    "evidence": "saboot",
+    "crime": "apradh",
+    "sentence": "saza",
+    "punishment": "dand",
+    "rights": "adhikaar",
+    "murder": "hatya",
+    "theft": "chori",
+    "fraud": "dhokha",
+    "assault": "hamla",
+    "victim": "peedit",
+    "investigation": "jaanch",
+    "chargesheet": "aarop patra",
+    "magistrate": "nyayik magistrate",
+    "petition": "yaachika",
+    "appeal": "appeal",
+    "hearing": "sunwai",
+    "verdict": "faisla",
+    "acquittal": "bari",
+    "conviction": "saza",
+    "custody": "hirasat",
+    "remand": "remand",
+    "surety": "zamanat-daar",
+    "bond": "muchalka",
+}
+
+# Common Hindi phrase translations
+_HINDI_PHRASES: Dict[str, str] = {
+    "you have the right to remain silent": "aapko chup rehne ka adhikaar hai",
+    "you have the right to a lawyer": "aapko vakeel ka adhikaar hai",
+    "bail application": "zamanat avedan",
+    "first information report": "pratham soochna report",
+    "police station": "thana",
+    "court order": "adalat ka aadesh",
+    "bail is granted": "zamanat manzoor hui",
+    "bail is rejected": "zamanat kharij hui",
+    "file a complaint": "shikayat darj karein",
+    "under arrest": "giraftaari mein",
+    "not guilty": "nirdosh",
+    "guilty": "doshi",
+    "right to fair trial": "nyaaypoorn sunwai ka adhikaar",
+    "fundamental rights": "maulik adhikaar",
+    "legal aid": "vidhi sahayata",
+    "free legal aid": "muft vidhi sahayata",
+    "anticipatory bail": "agrim zamanat",
+    "regular bail": "niyamit zamanat",
+    "default bail": "vaidhanik zamanat",
+    "non-bailable offense": "gair-zamaanatee apradh",
+    "bailable offense": "zamaanatee apradh",
+    "cognizable offense": "sangeyya apradh",
+}
+
+# Legal English formalization mappings
+_LEGAL_ENGLISH_TERMS: Dict[str, str] = {
+    "police must file fir": "It is incumbent upon the Station House Officer to register a First Information Report",
+    "file a complaint": "lodge a formal complaint under the provisions of the Code of Criminal Procedure, 1973",
+    "get bail": "seek release on bail under the applicable provisions of law",
+    "go to court": "approach the competent court of jurisdiction",
+    "get a lawyer": "engage the services of a legal practitioner duly enrolled under the Advocates Act, 1961",
+    "arrested without reason": "apprehended without lawful authority or reasonable grounds as mandated under Section 41 CrPC",
+    "can't be arrested": "arrest is impermissible without compliance with the procedural safeguards",
+    "has to be released": "is entitled to be released forthwith in accordance with law",
+    "police didn't help": "the law enforcement authorities failed to discharge their statutory obligations",
+    "wrong charges": "erroneous or malafide charges have been levied",
+    "false case": "a case founded on frivolous and vexatious allegations",
+    "need bail": "an application for bail is necessitated in the facts and circumstances of the case",
+    "bail hearing": "hearing of the bail application before the competent court",
+    "bail conditions": "conditions imposed by the court for the grant of bail",
+    "police complaint": "complaint registered with the jurisdictional police station",
+    "court date": "the date fixed for hearing before the Honourable Court",
+}
+
+# Plain English simplification mappings
+_PLAIN_ENGLISH_TERMS: Dict[str, str] = {
+    "cognizable offense": "a crime where police can arrest without warrant",
+    "cognizable offence": "a crime where police can arrest without warrant",
+    "non-bailable": "bail is not automatic and requires court permission",
+    "non-bailable offense": "a crime where bail is not automatic - you need the court to grant it",
+    "non-bailable offence": "a crime where bail is not automatic - you need the court to grant it",
+    "bailable offense": "a crime where you have the right to get bail from the police station itself",
+    "bailable offence": "a crime where you have the right to get bail from the police station itself",
+    "anticipatory bail": "bail you apply for before you are actually arrested",
+    "default bail": "bail you are entitled to because police did not file chargesheet in time",
+    "statutory bail": "bail you are entitled to because police did not file chargesheet in time",
+    "chargesheet": "the formal document police file in court after completing their investigation",
+    "remand": "when the court sends you to police or judicial custody for a specific period",
+    "judicial custody": "being kept in jail under court's orders (not with police)",
+    "police custody": "being kept with police for investigation purposes",
+    "cognizance": "when the court formally takes notice of a crime and begins proceedings",
+    "bail bond": "a written promise (sometimes with money) that you will appear in court when required",
+    "surety": "a person who guarantees on your behalf that you will follow bail conditions",
+    "first information report": "the first complaint registered at a police station about a crime (FIR)",
+    "ex-parte": "a decision made by the court when one side is not present",
+    "adjournment": "postponement of the hearing to a future date",
+    "affidavit": "a written statement confirmed by oath for use as evidence in court",
+    "summons": "an official order to appear in court on a specific date",
+    "warrant": "a legal document issued by a judge authorizing police to arrest someone or search a place",
+    "quashing": "when a higher court cancels or sets aside a case or FIR",
+    "compounding": "when the victim and accused settle the matter and the case is closed",
+    "plea bargaining": "when the accused agrees to plead guilty in exchange for a lighter punishment",
+    "acquittal": "when the court declares the accused not guilty",
+    "conviction": "when the court declares the accused guilty",
+    "prima facie": "at first look, based on initial evidence",
+    "habeas corpus": "a legal demand to bring a detained person before the court (used when someone is illegally held)",
+    "mens rea": "criminal intent or guilty mind - the intention to commit a crime",
+    "suo motu": "action taken by the court on its own, without anyone filing a case",
+    "inter alia": "among other things",
+    "locus standi": "the right to bring a case or appear in court",
+    "ultra vires": "beyond one's legal power or authority",
+    "res judicata": "a matter already decided by a court that cannot be raised again",
+}
+
+
+def _translate_to_hindi(text: str, context: Optional[str] = None) -> Dict:
+    """Smart mock Hindi translation using term-by-term replacement and phrase matching."""
+    translated = text
+
+    # First try phrase-level matches (longer matches first)
+    for phrase, hindi in sorted(_HINDI_PHRASES.items(), key=lambda x: -len(x[0])):
+        pattern = re.compile(re.escape(phrase), re.IGNORECASE)
+        translated = pattern.sub(hindi, translated)
+
+    # Then do word-level replacements for remaining terms
+    for term, hindi in sorted(_HINDI_LEGAL_TERMS.items(), key=lambda x: -len(x[0])):
+        pattern = re.compile(r'\b' + re.escape(term) + r'\b', re.IGNORECASE)
+        translated = pattern.sub(hindi, translated)
+
+    context_note = ""
+    if context == "bail_application":
+        context_note = " Context: Zamanat (bail) se sambandhit jaankari."
+    elif context == "fir":
+        context_note = " Context: Pratham Soochna Report (FIR) se sambandhit jaankari."
+    elif context == "court_order":
+        context_note = " Context: Adalat ke aadesh se sambandhit jaankari."
+    elif context == "rights":
+        context_note = " Context: Aapke kanuni adhikaar se sambandhit jaankari."
+
+    return {
+        "original": text,
+        "translated": translated + context_note,
+        "target_language": "hindi",
+        "note": "This is an approximate Hindi translation. For official legal documents, please use a certified translator.",
+        "terms_translated": {k: v for k, v in _HINDI_LEGAL_TERMS.items() if k.lower() in text.lower()},
+    }
+
+
+def _translate_to_legal_english(text: str, context: Optional[str] = None) -> Dict:
+    """Convert plain language to formal legal English."""
+    translated = text
+
+    # Replace known phrases (longer matches first)
+    for phrase, legal in sorted(_LEGAL_ENGLISH_TERMS.items(), key=lambda x: -len(x[0])):
+        pattern = re.compile(re.escape(phrase), re.IGNORECASE)
+        translated = pattern.sub(legal, translated)
+
+    # Add context-specific legal citations
+    citations = []  # type: List[str]
+    if context == "bail_application":
+        citations = [
+            "Sections 436-439 of CrPC (corresponding to Sections 478-483 of BNSS, 2023)",
+            "Article 21 of the Constitution of India (Right to Life and Liberty)",
+        ]
+    elif context == "fir":
+        citations = [
+            "Section 154 of CrPC (corresponding to Section 173 of BNSS, 2023)",
+            "Lalita Kumari v. Govt. of U.P. (2014) 2 SCC 1 - Mandatory registration of FIR",
+        ]
+    elif context == "court_order":
+        citations = [
+            "Section 362 of CrPC - Court not to alter judgement",
+            "Order XX of CPC - Judgement and Decree",
+        ]
+    elif context == "rights":
+        citations = [
+            "Part III of the Constitution of India - Fundamental Rights",
+            "D.K. Basu v. State of West Bengal (1997) - Guidelines on arrest",
+        ]
+
+    return {
+        "original": text,
+        "translated": translated,
+        "target_language": "legal_english",
+        "relevant_citations": citations,
+        "note": "This is an automated conversion to formal legal language. Please have it reviewed by a qualified advocate before use in legal proceedings.",
+    }
+
+
+def _translate_to_plain_english(text: str, context: Optional[str] = None) -> Dict:
+    """Convert legal jargon to simple, understandable language."""
+    translated = text
+
+    # Replace legal terms with plain language (longer matches first)
+    for term, plain in sorted(_PLAIN_ENGLISH_TERMS.items(), key=lambda x: -len(x[0])):
+        pattern = re.compile(re.escape(term), re.IGNORECASE)
+        translated = pattern.sub(plain, translated)
+
+    # Add helpful context
+    helpful_tips = []  # type: List[str]
+    if context == "bail_application":
+        helpful_tips = [
+            "Bail means getting released from custody while your case is going on",
+            "You usually need a lawyer to apply for bail, but you can also get free legal aid",
+        ]
+    elif context == "fir":
+        helpful_tips = [
+            "FIR is the first step in any criminal case - police MUST register it",
+            "You can file FIR at any police station, not just the one in your area (Zero FIR)",
+        ]
+    elif context == "court_order":
+        helpful_tips = [
+            "A court order is a direction given by a judge that must be followed",
+            "If you don't understand the order, ask your lawyer to explain it in simple terms",
+        ]
+    elif context == "rights":
+        helpful_tips = [
+            "You always have the right to know why you are being arrested",
+            "You have the right to a lawyer - if you can't afford one, the government must provide one free",
+        ]
+
+    return {
+        "original": text,
+        "translated": translated,
+        "target_language": "plain_english",
+        "helpful_tips": helpful_tips,
+        "note": "This is a simplified explanation. Legal terms can have specific technical meanings in different contexts.",
+    }
+
+
+@router.post("/translate")
+async def translate_legal_text(data: dict):
+    """
+    Translate legal text between Hindi, legal English, and plain English.
+    Uses AI (OpenRouter) when available, falls back to static word-mapping.
+    """
+    text = data.get("text", "").strip()
+    target_language = data.get("target_language", "").strip().lower()
+    context = data.get("context")  # type: Optional[str]
+
+    if not text:
+        return {"error": "Please provide 'text' to translate."}
+
+    valid_languages = ["hindi", "legal_english", "plain_english"]
+    if target_language not in valid_languages:
+        return {"error": f"Invalid target_language. Must be one of: {', '.join(valid_languages)}"}
+
+    valid_contexts = ["bail_application", "fir", "court_order", "rights", "general", None]
+    if context and context not in valid_contexts:
+        return {"error": f"Invalid context. Must be one of: bail_application, fir, court_order, rights, general"}
+
+    if context == "general":
+        context = None
+
+    # Try AI translation first (if OpenRouter key is configured)
+    ai_result = await ai_translate(text, target_language, context)
+    if ai_result:
+        return ai_result
+
+    # Fallback to static translation
+    if target_language == "hindi":
+        return _translate_to_hindi(text, context)
+    elif target_language == "legal_english":
+        return _translate_to_legal_english(text, context)
+    elif target_language == "plain_english":
+        return _translate_to_plain_english(text, context)
+
+
+# ============ ROLE-BASED RECOMMENDATIONS ENDPOINT ============
+
+_ROLE_GUIDES: Dict[str, Dict] = {
+    "citizen": {
+        "recommended_tools": [
+            {
+                "name": "Know Your Rights",
+                "path": "/tools/know-your-rights",
+                "description": "Understand your fundamental and legal rights in any situation - arrest, police encounter, workplace, etc.",
+            },
+            {
+                "name": "FIR Assistant",
+                "path": "/tools/fir-assistant",
+                "description": "Step-by-step help to file an FIR. Know what to include and what to expect.",
+            },
+            {
+                "name": "Bail Calculator",
+                "path": "/tools/bail-calculator",
+                "description": "Check if you or a family member is eligible for bail based on the charges and time in custody.",
+            },
+            {
+                "name": "Section Lookup",
+                "path": "/tools/section-lookup",
+                "description": "Understand what any IPC/BNS section means in simple language.",
+            },
+            {
+                "name": "Legal Translator",
+                "path": "/tools/translate",
+                "description": "Convert confusing legal language into plain English or Hindi so you can understand your documents.",
+            },
+            {
+                "name": "Case Timeline Tracker",
+                "path": "/tools/case-timeline",
+                "description": "Understand where your case stands and how long each stage typically takes.",
+            },
+        ],
+        "quick_actions": [
+            "Check my rights during a police encounter",
+            "Understand charges filed against me or a family member",
+            "Find out if bail is possible",
+            "File an FIR - step by step guide",
+            "Translate a court order to simple language",
+            "Find free legal aid near me",
+        ],
+        "tips": [
+            "Always ask for a copy of the FIR after filing - it is your legal right under Section 154(2) CrPC.",
+            "You have the right to free legal aid if you cannot afford a lawyer (Article 39A of the Constitution).",
+            "Police cannot arrest you without telling you the reason - this is your fundamental right under Article 22.",
+            "If police refuse to file your FIR, you can send it by registered post to the SP or approach the Magistrate under Section 156(3) CrPC.",
+            "Always keep copies of all legal documents - FIR, bail orders, court orders, etc.",
+            "You can file a Zero FIR at any police station regardless of jurisdiction.",
+            "Never sign a blank paper at the police station.",
+            "You have the right to make a phone call to a family member or lawyer immediately after arrest.",
+        ],
+    },
+    "lawyer": {
+        "recommended_tools": [
+            {
+                "name": "Bail Calculator",
+                "path": "/tools/bail-calculator",
+                "description": "Quick statutory bail eligibility analysis based on sections, custody period, and chargesheet status.",
+            },
+            {
+                "name": "Section Mapper (IPC to BNS)",
+                "path": "/tools/section-mapper",
+                "description": "Instantly map between old IPC sections and new BNS sections for case preparation.",
+            },
+            {
+                "name": "FIR Draft Assistant",
+                "path": "/tools/fir-assistant",
+                "description": "Generate structured FIR drafts with all required elements for your client.",
+            },
+            {
+                "name": "Legal Translator",
+                "path": "/tools/translate",
+                "description": "Convert between legal English, plain English, and Hindi for client communication and drafting.",
+            },
+            {
+                "name": "Case Timeline Tracker",
+                "path": "/tools/case-timeline",
+                "description": "Analyze case progress, identify delays, and prepare applications for expeditious trial.",
+            },
+            {
+                "name": "Section Lookup",
+                "path": "/tools/section-lookup",
+                "description": "Quick reference for IPC/BNS sections with punishment details, bail status, and case law.",
+            },
+        ],
+        "quick_actions": [
+            "Check default bail eligibility for my client",
+            "Map IPC sections to new BNS provisions",
+            "Draft a bail application",
+            "Look up punishment and bail status for a section",
+            "Translate legal documents to Hindi for client",
+            "Analyze case timeline for delay arguments",
+        ],
+        "tips": [
+            "Always check default bail eligibility under Section 167(2) CrPC / Section 187 BNSS - it is an indefeasible right.",
+            "The new Bharatiya Nyaya Sanhita (BNS) 2023 replaces IPC from 1st July 2024 - use the Section Mapper to stay updated.",
+            "For anticipatory bail, ensure you address the conditions under Section 438 CrPC / Section 482 BNSS.",
+            "Keep track of the 60/90 day chargesheet filing deadline - missing it entitles your client to default bail.",
+            "Under the new BNSS, preliminary inquiry before FIR registration has been formalized - use this to your advantage.",
+            "Always cite D.K. Basu guidelines when challenging illegal arrest procedures.",
+            "For bail arguments, refer to the three-pronged test: flight risk, evidence tampering, and witness influence.",
+            "Use the Supreme Court's guidelines in Arnesh Kumar v. State of Bihar for arrests under Section 498A IPC.",
+        ],
+    },
+    "police": {
+        "recommended_tools": [
+            {
+                "name": "FIR Assistant",
+                "path": "/tools/fir-assistant",
+                "description": "Ensure FIRs are drafted with all mandatory elements and proper section mapping.",
+            },
+            {
+                "name": "Section Lookup",
+                "path": "/tools/section-lookup",
+                "description": "Quick reference for applicable sections, punishment ranges, and cognizability status.",
+            },
+            {
+                "name": "Section Mapper (IPC to BNS)",
+                "path": "/tools/section-mapper",
+                "description": "Map between IPC and new BNS sections for proper chargesheet filing under new laws.",
+            },
+            {
+                "name": "Bail Calculator",
+                "path": "/tools/bail-calculator",
+                "description": "Track chargesheet filing deadlines and default bail eligibility dates.",
+            },
+            {
+                "name": "Legal Translator",
+                "path": "/tools/translate",
+                "description": "Translate legal information to Hindi or plain English for communicating with complainants and public.",
+            },
+            {
+                "name": "Case Timeline Tracker",
+                "path": "/tools/case-timeline",
+                "description": "Monitor investigation and case progress timelines to meet statutory deadlines.",
+            },
+        ],
+        "quick_actions": [
+            "Draft an FIR with correct sections",
+            "Look up applicable sections for an incident",
+            "Check chargesheet filing deadline",
+            "Map old IPC sections to new BNS provisions",
+            "Verify if offense is cognizable or non-cognizable",
+            "Translate rights information to Hindi for the accused",
+        ],
+        "tips": [
+            "FIR must be registered immediately for cognizable offenses - Lalita Kumari v. Govt. of U.P. (2014).",
+            "Follow D.K. Basu guidelines strictly during arrest - inform the arrested person of grounds, allow legal counsel, and notify family.",
+            "Chargesheet must be filed within 60 days (max 7 years punishment) or 90 days (above 7 years) to prevent default bail.",
+            "Under BNSS 2023, FIR can also be filed electronically - ensure your station has the infrastructure.",
+            "Zero FIR must be registered and transferred to the correct jurisdiction within 24 hours.",
+            "Always provide a free copy of the FIR to the complainant - it is mandatory under law.",
+            "Follow Arnesh Kumar guidelines for arrests in cases with punishment up to 7 years - arrest is not mandatory.",
+            "Maintain the case diary meticulously - it can be inspected by the court under Section 172 CrPC.",
+        ],
+    },
+}
+
+
+@router.get("/role-guide/{role}")
+def get_role_guide(role: str):
+    """
+    Get role-based recommendations for tools, quick actions, and tips.
+    Roles: citizen, lawyer, police.
+    """
+    role = role.strip().lower()
+    if role not in _ROLE_GUIDES:
+        return {
+            "error": f"Invalid role '{role}'. Must be one of: citizen, lawyer, police.",
+            "available_roles": list(_ROLE_GUIDES.keys()),
+        }
+
+    guide = _ROLE_GUIDES[role]
+    return {
+        "role": role,
+        "recommended_tools": guide["recommended_tools"],
+        "quick_actions": guide["quick_actions"],
+        "tips": guide["tips"],
+        "total_tools": len(guide["recommended_tools"]),
     }

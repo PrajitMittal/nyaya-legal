@@ -1,11 +1,30 @@
 import json
-import anthropic
+from openai import OpenAI
 from typing import Optional
-from config import ANTHROPIC_API_KEY
+from config import OPENROUTER_API_KEY, OPENROUTER_MODEL
 
 client = None
-if ANTHROPIC_API_KEY and ANTHROPIC_API_KEY != "your_api_key_here":
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+if OPENROUTER_API_KEY and OPENROUTER_API_KEY != "your_openrouter_key_here":
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=OPENROUTER_API_KEY,
+    )
+
+MODEL = OPENROUTER_MODEL
+
+
+def _chat(system: str, user: str, max_tokens: int = 4096) -> str:
+    """Send a chat completion request via OpenRouter."""
+    response = client.chat.completions.create(
+        model=MODEL,
+        max_tokens=max_tokens,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        temperature=0.3,
+    )
+    return response.choices[0].message.content
 
 
 ANALYSIS_PROMPT = """You are an expert Indian legal analyst with deep knowledge of the Indian Penal Code (IPC), Bharatiya Nyaya Sanhita (BNS), Code of Criminal Procedure (CrPC), and Indian court systems.
@@ -114,12 +133,46 @@ FIR Text:
 Return ONLY valid JSON."""
 
 
+TRANSLATE_SYSTEM = """You are an expert Indian legal translator. You translate legal text accurately while preserving legal meaning.
+- For Hindi: Translate into natural Hindi (Devanagari script) that a common person can understand. Keep legal terms in both Hindi and English where helpful.
+- For Legal English: Convert to formal legal language suitable for court filings in India. Use proper legal terminology and citations.
+- For Plain English: Simplify into easy-to-understand language that a person with no legal background can follow. Explain legal terms inline.
+
+Always preserve the core legal meaning. Do NOT add disclaimers or explanations — just translate."""
+
+
+async def translate_text(text: str, target_language: str, context: str = None) -> dict:
+    """Translate legal text using AI via OpenRouter."""
+    if not client:
+        return None  # Caller will fall back to static translation
+
+    mode_instructions = {
+        "hindi": "Translate the following Indian legal text into Hindi (Devanagari script). Make it understandable to a common person while keeping legal accuracy.",
+        "legal_english": "Convert the following text into formal legal English suitable for Indian court proceedings. Use proper legal terminology, citations, and formal structure.",
+        "plain_english": "Simplify the following Indian legal text into plain, easy-to-understand English. Explain any legal jargon inline. A person with no legal knowledge should be able to understand it.",
+    }
+
+    instruction = mode_instructions.get(target_language, mode_instructions["plain_english"])
+    if context:
+        instruction += f"\nContext: This text relates to {context.replace('_', ' ')}."
+
+    try:
+        result = _chat(TRANSLATE_SYSTEM, f"{instruction}\n\nText to translate:\n{text}", max_tokens=2048)
+        return {
+            "original": text,
+            "translated": result.strip(),
+            "target_language": target_language,
+            "ai_powered": True,
+        }
+    except Exception as e:
+        return None  # Caller falls back to static
+
+
 async def analyze_fir(fir_data: dict, similar_cases: list) -> dict:
-    """Analyze an FIR using Claude AI."""
+    """Analyze an FIR using AI via OpenRouter."""
     if not client:
         return _mock_analysis(fir_data, similar_cases)
 
-    # Format similar cases for the prompt
     similar_text = ""
     for i, case in enumerate(similar_cases[:5], 1):
         similar_text += f"\n{i}. {case.get('title', 'Unknown')}\n"
@@ -142,17 +195,13 @@ async def analyze_fir(fir_data: dict, similar_cases: list) -> dict:
     )
 
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
+        response_text = _chat(
+            "You are an expert Indian legal analyst. Return ONLY valid JSON.",
+            prompt,
         )
-        response_text = message.content[0].text
-        # Parse JSON from response
         analysis = json.loads(response_text)
         return analysis
     except json.JSONDecodeError:
-        # Try to extract JSON from response
         try:
             start = response_text.index("{")
             end = response_text.rindex("}") + 1
@@ -161,21 +210,20 @@ async def analyze_fir(fir_data: dict, similar_cases: list) -> dict:
         except (ValueError, json.JSONDecodeError):
             return {"error": "Failed to parse AI response", "raw": response_text}
     except Exception as e:
-        return {"error": f"Claude API error: {str(e)}"}
+        return {"error": f"AI API error: {str(e)}"}
 
 
 async def extract_fir_from_text(text: str) -> dict:
-    """Use Claude to extract structured FIR fields from raw text."""
+    """Use AI to extract structured FIR fields from raw text."""
     if not client:
         return {}
 
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        response_text = _chat(
+            "You are an expert at reading Indian FIR documents. Return ONLY valid JSON.",
+            FIR_EXTRACTION_PROMPT.format(text=text[:3000]),
             max_tokens=1024,
-            messages=[{"role": "user", "content": FIR_EXTRACTION_PROMPT.format(text=text[:3000])}],
         )
-        response_text = message.content[0].text
         return json.loads(response_text)
     except Exception:
         return {}
@@ -186,7 +234,6 @@ def _mock_analysis(fir_data: dict, similar_cases: list) -> dict:
     sections = fir_data.get("ipc_sections", "420")
     category = fir_data.get("offense_category", "Fraud")
 
-    # Build dynamic mock based on offense category
     section_details = {
         "Murder": {"rate": 38.2, "duration": "5-10 years", "bail": "Low", "punishment": "Life imprisonment or death"},
         "Cheating / Fraud": {"rate": 28.5, "duration": "3-7 years", "bail": "Medium", "punishment": "Up to 7 years + fine"},
