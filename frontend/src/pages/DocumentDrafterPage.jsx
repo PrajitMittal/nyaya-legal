@@ -4,6 +4,7 @@ import axios from 'axios';
 import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
 import NextSteps from '../components/NextSteps';
+import SaveResultButton from '../components/SaveResultButton';
 
 const DOCUMENT_TYPES = [
   {
@@ -444,7 +445,12 @@ export default function DocumentDrafterPage() {
                 {result.document_type?.replace(/_/g, ' ')}
               </p>
             </div>
-            <div className="flex gap-2 print:hidden">
+            <div className="flex flex-wrap gap-2 print:hidden">
+              <SaveResultButton
+                toolName="document_drafter"
+                title={`${selectedDocType?.label || selectedType} — Sec ${form.sections}`}
+                resultData={result}
+              />
               <button
                 type="button"
                 onClick={handleCopy}

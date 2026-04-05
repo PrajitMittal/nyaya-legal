@@ -4,6 +4,7 @@ import PDFUploadButton from '../components/PDFUploadButton';
 import NextSteps from '../components/NextSteps';
 import { calculateBailEligibility } from '../utils/bailCalculator';
 import { downloadAsPdf, bailResultToPdfSections } from '../utils/downloadPdf';
+import SaveResultButton from '../components/SaveResultButton';
 
 export default function BailCalculatorPage() {
   const [searchParams] = useSearchParams();
@@ -159,16 +160,23 @@ export default function BailCalculatorPage() {
             </div>
           </div>
 
-          {/* Download PDF */}
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2">
           <button
             onClick={() => downloadAsPdf('Bail Eligibility Report', bailResultToPdfSections(result))}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Download / Print Report
           </button>
+          <SaveResultButton
+            toolName="bail_calculator"
+            title={`Bail: Sec ${form.sections} — ${result.all_offenses_bailable ? 'Bailable' : 'Non-Bailable'}`}
+            resultData={result}
+          />
+          </div>
 
           {/* Key Facts */}
           <div className={`grid grid-cols-2 ${result.days_in_custody !== null ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3`}>

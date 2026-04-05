@@ -4,6 +4,7 @@ import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
 import NextSteps from '../components/NextSteps';
 import AIDisclaimer from '../components/AIDisclaimer';
+import SaveResultButton from '../components/SaveResultButton';
 
 const sampleTexts = [
   {
@@ -106,7 +107,14 @@ export default function DocumentExplainerPage() {
       {/* Results */}
       {result && (
         <div className="space-y-6">
-          <AIDisclaimer />
+          <div className="flex items-center justify-between">
+            <AIDisclaimer />
+            <SaveResultButton
+              toolName="document_explainer"
+              title={`Explained: ${result.document_type || result.document_type_detected || 'Legal Document'}`}
+              resultData={result}
+            />
+          </div>
           {/* Document Type */}
           {(result.document_type || result.document_type_detected) && (
             <div className="bg-rose-50 border border-rose-200 rounded-xl p-5">

@@ -4,6 +4,7 @@ import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
 import NextSteps from '../components/NextSteps';
 import AIDisclaimer from '../components/AIDisclaimer';
+import SaveResultButton from '../components/SaveResultButton';
 
 export default function FIRAssistantPage() {
   const [incident, setIncident] = useState('');
@@ -86,7 +87,14 @@ export default function FIRAssistantPage() {
       {/* Results */}
       {result && (
         <div className="space-y-6">
-          <AIDisclaimer />
+          <div className="flex items-center justify-between">
+            <AIDisclaimer />
+            <SaveResultButton
+              toolName="fir_assistant"
+              title={`FIR: ${result.suggested_sections?.map(s => s.section || s).join(', ') || 'Analysis'}`}
+              resultData={result}
+            />
+          </div>
           {/* Cognizable Banner */}
           <div className={`rounded-xl p-6 ${result.fir_mandatory
             ? 'bg-green-50 border-2 border-green-300' : 'bg-amber-50 border border-amber-300'}`}>

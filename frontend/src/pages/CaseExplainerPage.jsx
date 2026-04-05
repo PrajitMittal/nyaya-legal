@@ -4,6 +4,7 @@ import TranslateToggle from '../components/TranslateToggle';
 import PDFUploadButton from '../components/PDFUploadButton';
 import NextSteps from '../components/NextSteps';
 import AIDisclaimer from '../components/AIDisclaimer';
+import SaveResultButton from '../components/SaveResultButton';
 
 export default function CaseExplainerPage() {
   const [caseInput, setCaseInput] = useState('');
@@ -184,7 +185,14 @@ export default function CaseExplainerPage() {
       {/* Results */}
       {result && (
         <div className="space-y-6">
-          <AIDisclaimer />
+          <div className="flex items-center justify-between">
+            <AIDisclaimer />
+            <SaveResultButton
+              toolName="case_explainer"
+              title={`Case: ${result.case_info?.case_number || caseInput}`}
+              resultData={result}
+            />
+          </div>
           {/* Case Overview */}
           {result.case_info && (
             <div className="bg-white border rounded-xl p-6">
