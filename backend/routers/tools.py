@@ -26,6 +26,23 @@ from services.pdf_parser import extract_text_from_pdf
 router = APIRouter()
 
 
+@router.get("/debug-env")
+def debug_env():
+    """Temporary debug endpoint to check env vars on Vercel."""
+    import os
+    from config import OPENROUTER_API_KEY, OPENROUTER_MODEL
+    from services.claude_analyzer import client
+    key = OPENROUTER_API_KEY
+    return {
+        "has_key": bool(key),
+        "key_prefix": key[:10] + "..." if key else "NONE",
+        "model": OPENROUTER_MODEL,
+        "client_initialized": client is not None,
+        "vercel": bool(os.environ.get("VERCEL")),
+        "env_key_prefix": (os.environ.get("OPENROUTER_API_KEY", "")[:10] + "...") if os.environ.get("OPENROUTER_API_KEY") else "NOT_IN_ENV",
+    }
+
+
 # ============ PDF TEXT EXTRACTION (shared) ============
 
 @router.post("/extract-pdf")
