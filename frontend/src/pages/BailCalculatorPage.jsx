@@ -21,13 +21,13 @@ export default function BailCalculatorPage() {
     setError('');
     try {
       const sections = form.sections.split(',').map(s => s.trim()).filter(Boolean);
-      if (!sections.length || !form.arrest_date) {
-        setError('Please enter sections and arrest date');
+      if (!sections.length) {
+        setError('Please enter at least one IPC/BNS section number');
         return;
       }
       const res = calculateBailEligibility(
         sections,
-        form.arrest_date,
+        form.arrest_date || null,
         form.chargesheet_filed,
         form.chargesheet_filed ? form.chargesheet_date : null,
       );
@@ -57,11 +57,19 @@ export default function BailCalculatorPage() {
         <PDFUploadButton
           label="Upload FIR / Chargesheet PDF to auto-fill"
           onTextExtracted={(text) => {
-            const secs = text.match(/(?:Section|Sec\.?)\s+(\d{1,4}[A-Z]?)/gi);
+            // Extract IPC/BNS sections — look for "Section X" or "u/s X" patterns
+            const secs = text.match(/(?:Section|Sec\.?|u\/s\.?|under\s+section)\s+(\d{1,4}[A-Z]?)/gi);
             if (secs) {
-              const nums = secs.map(s => s.replace(/(?:Section|Sec\.?)\s+/i, '')).join(', ');
-              setForm(prev => ({ ...prev, sections: nums }));
+              const nums = secs
+                .map(s => s.replace(/(?:Section|Sec\.?|u\/s\.?|under\s+section)\s+/i, '').trim())
+                // Filter out CrPC/procedural sections that aren't IPC offenses
+                .filter(n => !['154', '155', '156', '157', '160', '161', '162', '163', '164', '165', '173', '190', '200', '2', '3', '4', '5', '12'].includes(n))
+                .filter((v, i, a) => a.indexOf(v) === i); // deduplicate
+              if (nums.length) {
+                setForm(prev => ({ ...prev, sections: nums.join(', ') }));
+              }
             }
+            // Try to extract arrest date
             const dateMatch = text.match(/(?:arrest|arrested|custody)\s*(?:on|dated?)?\s*[:\-]?\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})/i);
             if (dateMatch) {
               const parts = dateMatch[1].split(/[/\-\.]/);
@@ -85,14 +93,14 @@ export default function BailCalculatorPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Arrest</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Arrest <span className="text-gray-400 font-normal">(if applicable)</span></label>
             <input
               type="date"
               value={form.arrest_date}
               onChange={e => setForm({ ...form, arrest_date: e.target.value })}
-              required
               className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
             />
+            <p className="text-xs text-gray-400 mt-1">Leave blank if no arrest has been made yet</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Chargesheet Filed?</label>
@@ -163,8 +171,8 @@ export default function BailCalculatorPage() {
           </button>
 
           {/* Key Facts */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Days in Custody" value={result.days_in_custody} />
+          <div className={`grid grid-cols-2 ${result.days_in_custody !== null ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3`}>
+            {result.days_in_custody !== null && <Stat label="Days in Custody" value={result.days_in_custody} />}
             <Stat label="Max Punishment" value={result.max_punishment_years >= 99 ? 'Life' : `${result.max_punishment_years} years`} />
             <Stat label="All Bailable?" value={result.all_offenses_bailable ? 'Yes' : 'No'} />
             <Stat label="CS Deadline" value={`${result.chargesheet_deadline_days} days`} />
