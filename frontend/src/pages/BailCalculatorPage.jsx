@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import PDFUploadButton from '../components/PDFUploadButton';
 import NextSteps from '../components/NextSteps';
+import { calculateBailEligibility } from '../utils/bailCalculator';
+import { downloadAsPdf, bailResultToPdfSections } from '../utils/downloadPdf';
 
 export default function BailCalculatorPage() {
   const [searchParams] = useSearchParams();
@@ -13,30 +14,30 @@ export default function BailCalculatorPage() {
     chargesheet_date: '',
   });
   const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
     try {
-      const data = {
-        sections: form.sections.split(',').map(s => s.trim()).filter(Boolean),
-        arrest_date: form.arrest_date,
-        chargesheet_filed: form.chargesheet_filed,
-        chargesheet_date: form.chargesheet_filed ? form.chargesheet_date : null,
-      };
-      const res = await axios.post('/api/tools/bail-calculator', data);
-      if (res.data.error) {
-        setError(String(res.data.error));
-      } else {
-        setResult(res.data);
+      const sections = form.sections.split(',').map(s => s.trim()).filter(Boolean);
+      if (!sections.length || !form.arrest_date) {
+        setError('Please enter sections and arrest date');
+        return;
       }
+      const res = calculateBailEligibility(
+        sections,
+        form.arrest_date,
+        form.chargesheet_filed,
+        form.chargesheet_filed ? form.chargesheet_date : null,
+      );
+      if (!res.sections_analysis.length) {
+        setError('None of the entered sections were found in our database. Try standard IPC sections like 302, 420, 498A.');
+        return;
+      }
+      setResult(res);
     } catch (err) {
-      setError(err.response?.data?.error || 'Calculation failed');
-    } finally {
-      setLoading(false);
+      setError('Calculation failed: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -122,9 +123,9 @@ export default function BailCalculatorPage() {
             />
           </div>
         )}
-        <button type="submit" disabled={loading}
-          className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 transition">
-          {loading ? 'Calculating...' : 'Check Bail Eligibility'}
+        <button type="submit"
+          className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+          Check Bail Eligibility
         </button>
       </form>
 
@@ -149,6 +150,17 @@ export default function BailCalculatorPage() {
               </div>
             </div>
           </div>
+
+          {/* Download PDF */}
+          <button
+            onClick={() => downloadAsPdf('Bail Eligibility Report', bailResultToPdfSections(result))}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download / Print Report
+          </button>
 
           {/* Key Facts */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

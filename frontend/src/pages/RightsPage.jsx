@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import { getRights } from '../data/rights';
 import NextSteps from '../components/NextSteps';
 
 const SITUATIONS = [
@@ -14,8 +14,6 @@ export default function RightsPage() {
   const [searchParams] = useSearchParams();
   const [selected, setSelected] = useState(null);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   // Auto-load from query param
   useEffect(() => {
@@ -25,24 +23,10 @@ export default function RightsPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadRights = async (situation) => {
+  const loadRights = (situation) => {
     setSelected(situation);
-    setLoading(true);
-    setError('');
-    try {
-      const res = await axios.get(`/api/tools/rights/${situation}`);
-      if (res.data.error) {
-        setData(null);
-        setError(String(res.data.error));
-      } else {
-        setData(res.data);
-      }
-    } catch (err) {
-      setData(null);
-      setError(err.response?.data?.error || err.message || 'Failed to load rights');
-    } finally {
-      setLoading(false);
-    }
+    const result = getRights(situation);
+    setData(result);
   };
 
   return (
@@ -53,6 +37,7 @@ export default function RightsPage() {
           Your constitutional and legal rights in common situations. Know them BEFORE you need them.
           Based on the Indian Constitution, CrPC, and Supreme Court judgments.
         </p>
+        <p className="text-purple-200 text-sm mt-2">Works offline — no internet needed.</p>
       </div>
 
       {/* Situation Cards */}
@@ -73,11 +58,7 @@ export default function RightsPage() {
         ))}
       </div>
 
-      {loading && <div className="text-center py-8 text-gray-500">Loading...</div>}
-
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm">{error}</div>}
-
-      {data && !loading && (
+      {data && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{data.title}</h2>
 
@@ -115,23 +96,14 @@ export default function RightsPage() {
             </div>
           )}
 
-          {/* Cross-tool links */}
           <NextSteps steps={[
-            {
-              label: 'File an FIR',
-              desc: 'Get applicable sections and draft complaint',
-              path: '/fir-assistant',
-            },
-            {
-              label: 'Check Bail Eligibility',
-              desc: 'See if bail is available',
-              path: '/bail-calculator',
-            },
+            { label: 'File an FIR', desc: 'Get applicable sections and draft complaint', path: '/fir-assistant' },
+            { label: 'Check Bail Eligibility', desc: 'See if bail is available', path: '/bail-calculator' },
           ]} />
         </div>
       )}
 
-      {!selected && !loading && (
+      {!selected && (
         <div className="text-center py-12 text-gray-500">
           Select a situation above to see your legal rights.
         </div>
