@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "FastAPI Backend",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["start-backend.sh"],
+      "port": 8000
+    },
+    {
+      "name": "React Frontend",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["start-frontend.sh"],
+      "port": 5173
+    }
+  ]
+}
