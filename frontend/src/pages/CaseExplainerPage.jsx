@@ -101,20 +101,30 @@ export default function CaseExplainerPage() {
           <PDFUploadButton
             label="Upload Case Document (PDF)"
             onTextExtracted={(text) => {
-              // Try to extract case/CNR number
+              // Try to extract case/CNR number from the document
               const cnrMatch = text.match(/[A-Z]{4}\d{2}-\d{6}-\d{4}/);
-              const caseMatch = text.match(/(?:Case\s*No|CC|SC|CRL\.?A|SLP)\s*[.:\-/]?\s*\d+\s*[/\-]\s*\d{4}/i);
+              const caseMatch = text.match(/(?:Case\s*No|CC|SC|CRL\.?A|SLP|WP|CRA|BA)\s*[.:\-/]?\s*\d+\s*[/\-]\s*\d{4}/i);
+              const firMatch = text.match(/(?:FIR\s*(?:No|Number|#)\.?\s*[:\-]?\s*)(\d+[/\-]\d{4}|\d+)/i);
               if (cnrMatch) {
                 setCaseInput(cnrMatch[0]);
                 setInputType('cnr_number');
               } else if (caseMatch) {
                 setCaseInput(caseMatch[0]);
                 setInputType('case_number');
+              } else if (firMatch) {
+                setCaseInput('FIR ' + firMatch[1]);
+                setInputType('case_number');
               } else {
-                setCaseInput(text.slice(0, 100));
+                // No case number found — suggest Document Explainer instead
+                setError('No case/CNR number found in this PDF. If you want to understand the document contents, use the Document Explainer tool instead.');
               }
             }}
           />
+          <p className="text-xs text-gray-400 mt-1">
+            Upload a court order or case document to auto-detect the case number.
+            For understanding document contents, use{' '}
+            <a href="/explain-document" className="text-indigo-600 underline hover:text-indigo-800">Document Explainer</a>.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-4">
