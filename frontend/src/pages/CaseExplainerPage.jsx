@@ -297,7 +297,14 @@ export default function CaseExplainerPage() {
                     <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">
                       {i + 1}
                     </span>
-                    <p className="text-sm text-gray-700">{step}</p>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-700">{typeof step === 'string' ? step : step.step}</p>
+                      {step.priority && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block ${step.priority === 'High' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {step.priority}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
