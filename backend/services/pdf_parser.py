@@ -1,20 +1,15 @@
 import re
-import pdfplumber
 from typing import Optional
+from pdfminer.high_level import extract_text as pdfminer_extract
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extract all text from a PDF file."""
-    text = ""
+    """Extract all text from a PDF file using pdfminer (lightweight, no Pillow/pypdfium2)."""
     try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
+        text = pdfminer_extract(pdf_path)
+        return text.strip() if text else ""
     except Exception as e:
         raise ValueError(f"Cannot read PDF: {str(e)}")
-    return text.strip()
 
 
 def parse_fir_fields(text: str) -> dict:
